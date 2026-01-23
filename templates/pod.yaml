@@ -37,32 +37,32 @@ spec:
 
           echo "Generating dnsmasq config..."
           cat > /tmp/dnsmasq.conf << EOF
-          # Disable DNS
-          port=0
+# Disable DNS
+port=0
 
-          # Bind to specific interface
-          interface=$INTERFACE
+# Bind to specific interface
+interface=$INTERFACE
 
-          # Proxy DHCP mode
-          dhcp-range=$SUBNET,proxy
+# Proxy DHCP mode
+dhcp-range=$SUBNET,proxy
 
-          # Enable built-in TFTP server
-          enable-tftp
-          tftp-root=/tftpboot
+# Enable built-in TFTP server
+enable-tftp
+tftp-root=/tftpboot
 
-          # Log DHCP/TFTP activity
-          log-dhcp
+# Log DHCP/TFTP activity
+log-dhcp
 
-          # PXE boot options
-          dhcp-boot=undionly.kpxe
-          dhcp-match=set:efi-x86_64,option:client-arch,7
-          dhcp-match=set:efi-x86_64,option:client-arch,9
-          dhcp-boot=tag:efi-x86_64,ipxe.efi
+# PXE boot options
+dhcp-boot=undionly.kpxe
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-match=set:efi-x86_64,option:client-arch,9
+dhcp-boot=tag:efi-x86_64,ipxe.efi
 
-          # PXE service types
-          pxe-service=x86PC,"PXE Boot",undionly.kpxe
-          pxe-service=X86-64_EFI,"PXE Boot UEFI",ipxe.efi
-          EOF
+# PXE service types
+pxe-service=x86PC,"PXE Boot",undionly.kpxe
+pxe-service=X86-64_EFI,"PXE Boot UEFI",ipxe.efi
+EOF
 
           echo "Starting dnsmasq on interface $INTERFACE (subnet $SUBNET)..."
           exec dnsmasq -k -C /tmp/dnsmasq.conf --log-facility=-
