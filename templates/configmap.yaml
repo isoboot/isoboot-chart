@@ -9,8 +9,8 @@ data:
     # Disable DNS
     port=0
 
-    # Bind to specific interface
-    interface={{ required "interface is required (e.g., --set interface=enp4s0)" .Values.interface }}
+    # Bind to macvlan interface (net1 inside pod)
+    interface=net1
     bind-interfaces
 
     # Proxy DHCP mode - don't act as DHCP server, just add PXE options

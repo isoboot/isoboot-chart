@@ -14,8 +14,16 @@ Features:
 
 ## Prerequisites
 
-- Kubernetes cluster with host networking support
+- Kubernetes cluster with Multus CNI
 - Existing DHCP server on the network
+
+### Install Multus CNI
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset.yml
+```
+
+The chart automatically deploys the CNI DHCP daemon via DaemonSet.
 
 ## Installation
 
@@ -27,7 +35,7 @@ helm install isoboot ./isoboot-chart --set interface=enp4s0
 
 | Parameter | Description |
 |-----------|-------------|
-| `interface` | Network interface to bind to (e.g., `enp4s0`, `eth0`). **Required, no default.** |
+| `interface` | Host interface for macvlan (e.g., `br1`, `eth0`). Pod gets its own IP via DHCP. **Required, no default.** |
 
 ## Optional Parameters
 
@@ -43,15 +51,16 @@ helm install isoboot ./isoboot-chart --set interface=enp4s0
 
 ## How It Works
 
-1. Pod starts with Alpine Linux
-2. Installs dnsmasq and ipxe packages
-3. Configures dnsmasq in proxy DHCP mode on the specified interface
-4. Serves iPXE boot files via TFTP
+1. Chart creates a macvlan NetworkAttachmentDefinition on the specified interface
+2. Pod gets its own IP via DHCP on the network
+3. Pod installs dnsmasq and downloads iPXE binaries
+4. dnsmasq runs in proxy DHCP mode on the macvlan interface
+5. Serves iPXE boot files via TFTP
 
 When a PXE client boots:
 1. Client gets IP from your existing DHCP server
 2. dnsmasq (proxy mode) responds with PXE boot options
-3. Client downloads iPXE via TFTP from this Pod
+3. Client downloads iPXE via TFTP from the Pod's macvlan IP
 4. iPXE takes over boot process
 
 ## Uninstall

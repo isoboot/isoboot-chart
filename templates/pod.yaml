@@ -4,9 +4,10 @@ metadata:
   name: {{ include "isoboot.fullname" . }}
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
+  annotations:
+    k8s.v1.cni.cncf.io/networks: {{ include "isoboot.fullname" . }}-macvlan
 spec:
   restartPolicy: Always
-  hostNetwork: true
   containers:
     - name: pxe-server
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -29,7 +30,7 @@ spec:
           echo "iPXE files:"
           ls -la /tftpboot/
 
-          echo "Starting dnsmasq on interface {{ .Values.interface }}..."
+          echo "Starting dnsmasq on interface net1..."
           exec dnsmasq -k -C /etc/dnsmasq.conf --log-facility=-
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
