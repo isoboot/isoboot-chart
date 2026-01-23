@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "isoboot.fullname" . }}
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+spec:
+  restartPolicy: Always
+  hostNetwork: true
+  containers:
+    - name: pxe-server
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Installing dnsmasq and ipxe..."
+          apk add --no-cache dnsmasq ipxe
+
+          echo "Setting up TFTP directory..."
+          mkdir -p /tftpboot
+          cp /usr/share/ipxe/undionly.kpxe /tftpboot/ 2>/dev/null || echo "undionly.kpxe not found"
+          cp /usr/share/ipxe/ipxe.efi /tftpboot/ 2>/dev/null || echo "ipxe.efi not found"
+
+          # List available ipxe files
+          echo "Available iPXE files:"
+          ls -la /usr/share/ipxe/ || true
+          ls -la /tftpboot/
+
+          echo "Starting dnsmasq on interface {{ .Values.interface }}..."
+          exec dnsmasq -k -C /etc/dnsmasq.conf --log-facility=-
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      securityContext:
+        capabilities:
+          add:
+            - NET_ADMIN
+            - NET_RAW
+      volumeMounts:
+        - name: config
+          mountPath: /etc/dnsmasq.conf
+          subPath: dnsmasq.conf
+          readOnly: true
+  volumes:
+    - name: config
+      configMap:
+        name: {{ include "isoboot.fullname" . }}-config
