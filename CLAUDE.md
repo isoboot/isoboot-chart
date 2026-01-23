@@ -1,0 +1,69 @@
+# CLAUDE.md
+
+This file provides context for Claude Code when working on this project.
+
+## Project Overview
+
+isoboot-chart is a Helm chart that deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. It enables network booting (PXE) without replacing your existing DHCP server.
+
+## Architecture
+
+- **Pod with hostNetwork**: Uses the host's network stack to bind to DHCP/TFTP ports
+- **dnsmasq**: Runs in proxy DHCP mode - responds to PXE requests without handing out IP addresses
+- **iPXE**: Boot files (undionly.kpxe for BIOS, ipxe.efi for UEFI) served via TFTP
+
+## Key Design Decisions
+
+1. **hostNetwork over macvlan/multus**: We tried macvlan with Multus CNI but the CNI DHCP daemon couldn't properly access network namespaces from within a container. hostNetwork is simpler and works reliably.
+
+2. **Runtime config generation**: The dnsmasq config is generated at pod startup (not via ConfigMap) to allow auto-detection of the subnet from the interface.
+
+3. **Auto-detected subnet**: The pod extracts the network address from the interface IP using `ip` and `awk`, eliminating a required parameter.
+
+4. **Alpine + runtime install**: Uses Alpine base image and installs dnsmasq/iproute2 at startup. This trades startup time for simpler maintenance (no custom image to build).
+
+## File Structure
+
+```
+templates/
+├── _helpers.tpl    # Helm template helpers (name, labels)
+└── pod.yaml        # Main pod definition with embedded startup script
+values.yaml         # Default values (image, resources)
+Chart.yaml          # Chart metadata
+```
+
+## Testing
+
+Test with QEMU PXE boot:
+```bash
+# Create disk
+qemu-img create -f qcow2 /tmp/test.qcow2 20G
+
+# Boot with PXE (UEFI)
+sudo qemu-system-x86_64 \
+  -enable-kvm -m 4096 -cpu host -smp 2 \
+  -boot n \
+  -drive file=/tmp/test.qcow2,format=qcow2 \
+  -drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+  -nic bridge,br=br1,model=virtio \
+  -vnc :0 -daemonize
+```
+
+## Common Issues
+
+- **Port 69 in use**: Another TFTP server is running. Remove it: `apt-get remove tftpd-hpa`
+- **"no address range available"**: Subnet detection failed or dhcp-range is wrong
+- **No proxy DHCP response**: Check dnsmasq logs with `kubectl logs <pod>`
+
+## Commands
+
+```bash
+# Install
+helm install isoboot . --set interface=br1
+
+# Check logs
+kubectl logs -f isoboot-isoboot-chart
+
+# Reinstall (pod is immutable)
+helm uninstall isoboot && helm install isoboot . --set interface=br1
+```

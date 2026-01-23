@@ -8,26 +8,27 @@ This Helm chart deploys a Pod that provides PXE boot services via proxy DHCP. It
 
 Features:
 - Proxy DHCP mode (works alongside existing DHCP server)
-- Built-in TFTP server for iPXE boot files
-- DNS disabled
-- Regular DHCP disabled
+- Built-in TFTP server serving iPXE boot files
+- Auto-detects subnet from the specified interface
+- Supports both BIOS (undionly.kpxe) and UEFI (ipxe.efi) PXE clients
 
 ## Prerequisites
 
 - Kubernetes cluster
 - Existing DHCP server on the network
+- No other TFTP server running on port 69
 
 ## Installation
 
 ```bash
-helm install isoboot ./isoboot-chart --set interface=enp4s0
+helm install isoboot ./isoboot-chart --set interface=br1
 ```
 
 ## Required Parameters
 
 | Parameter | Description |
 |-----------|-------------|
-| `interface` | Network interface to bind dnsmasq to (e.g., `br1`, `eth0`). **Required, no default.** |
+| `interface` | Network interface to bind to (e.g., `br1`, `eth0`). Subnet is auto-detected. **Required.** |
 
 ## Optional Parameters
 
@@ -43,16 +44,26 @@ helm install isoboot ./isoboot-chart --set interface=enp4s0
 
 ## How It Works
 
-1. Pod runs with hostNetwork on the specified interface
-2. Pod installs dnsmasq and downloads iPXE binaries
-3. dnsmasq runs in proxy DHCP mode
-4. Serves iPXE boot files via TFTP
+1. Pod runs with `hostNetwork: true` to access the specified interface
+2. Auto-detects the subnet from the interface IP (e.g., `192.168.88.216/24` → `192.168.88.0`)
+3. Installs dnsmasq and downloads iPXE binaries at startup
+4. Runs dnsmasq in proxy DHCP mode on the detected subnet
+5. Serves iPXE boot files via built-in TFTP server
 
 When a PXE client boots:
-1. Client gets IP from your existing DHCP server
-2. dnsmasq (proxy mode) responds with PXE boot options
-3. Client downloads iPXE via TFTP from the host IP
-4. iPXE takes over boot process
+1. Client broadcasts DHCP Discover
+2. Your existing DHCP server offers an IP address
+3. dnsmasq (proxy mode) responds with PXE boot options (next-server, boot filename)
+4. Client downloads iPXE via TFTP
+5. iPXE loads and can chain to further boot scripts
+
+## Ports Used
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| 67 | UDP | DHCP (proxy mode) |
+| 69 | UDP | TFTP |
+| 4011 | UDP | PXE proxy DHCP |
 
 ## Uninstall
 
