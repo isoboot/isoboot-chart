@@ -19,12 +19,13 @@ spec:
           INTERFACE="{{ required "interface is required (e.g., --set interface=br1)" .Values.interface }}"
           HTTP_PORT="{{ .Values.http.port }}"
 
-          echo "Installing dnsmasq and iproute2..."
-          apk add --no-cache dnsmasq iproute2
+          echo "Installing dnsmasq, iproute2, and ipcalc..."
+          apk add --no-cache dnsmasq iproute2 ipcalc
 
           echo "Detecting network info from interface ${INTERFACE}..."
-          SUBNET=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {split($2, a, "/"); split(a[1], b, "."); print b[1]"."b[2]"."b[3]".0"}' | head -1)
-          HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {split($2, a, "/"); print a[1]}' | head -1)
+          IP_CIDR=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | head -1)
+          HOST_IP=$(echo "${IP_CIDR}" | cut -d/ -f1)
+          SUBNET=$(ipcalc -n "${IP_CIDR}" | awk -F= '/^NETWORK=/{print $2}')
           echo "Detected subnet: ${SUBNET}, host IP: ${HOST_IP}"
 
           echo "Setting up TFTP directory..."

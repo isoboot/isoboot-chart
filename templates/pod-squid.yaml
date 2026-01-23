@@ -20,11 +20,12 @@ spec:
           set -e
           INTERFACE="{{ required "interface is required" .Values.interface }}"
 
-          echo "Installing squid and iproute2..."
-          apk add --no-cache squid iproute2
+          echo "Installing squid, iproute2, and ipcalc..."
+          apk add --no-cache squid iproute2 ipcalc
 
           echo "Detecting subnet from interface ${INTERFACE}..."
-          SUBNET=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {split($2, a, "/"); split(a[1], b, "."); print b[1]"."b[2]"."b[3]".0/"a[2]}' | head -1)
+          IP_CIDR=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | head -1)
+          SUBNET=$(ipcalc -n -b "${IP_CIDR}" | awk -F= '/^NETWORK=/{net=$2} /^PREFIX=/{pre=$2} END{print net"/"pre}')
           echo "Detected subnet: ${SUBNET}"
 
           echo "Creating cache directory..."
