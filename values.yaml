@@ -1,0 +1,16 @@
+# Required: Network interface to bind to (e.g., br1, eth0)
+# This value MUST be provided during install
+# interface: br1
+
+image:
+  repository: alpine
+  tag: latest
+  pullPolicy: Always
+
+resources:
+  limits:
+    memory: "128Mi"
+    cpu: "500m"
+  requests:
+    memory: "64Mi"
+    cpu: "100m"
