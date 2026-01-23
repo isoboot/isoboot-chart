@@ -24,7 +24,7 @@ spec:
           apk add --no-cache squid iproute2
 
           echo "Detecting subnet from interface ${INTERFACE}..."
-          SUBNET=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | head -1)
+          SUBNET=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {split($2, a, "/"); split(a[1], b, "."); print b[1]"."b[2]"."b[3]".0/"a[2]}' | head -1)
           echo "Detected subnet: ${SUBNET}"
 
           echo "Creating cache directory..."
