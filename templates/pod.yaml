@@ -36,33 +36,22 @@ spec:
           ls -la /tftpboot/
 
           echo "Generating dnsmasq config..."
-          cat > /tmp/dnsmasq.conf << EOF
-# Disable DNS
-port=0
-
-# Bind to specific interface
-interface=$INTERFACE
-
-# Proxy DHCP mode
-dhcp-range=$SUBNET,proxy
-
-# Enable built-in TFTP server
-enable-tftp
-tftp-root=/tftpboot
-
-# Log DHCP/TFTP activity
-log-dhcp
-
-# PXE boot options
-dhcp-boot=undionly.kpxe
-dhcp-match=set:efi-x86_64,option:client-arch,7
-dhcp-match=set:efi-x86_64,option:client-arch,9
-dhcp-boot=tag:efi-x86_64,ipxe.efi
-
-# PXE service types
-pxe-service=x86PC,"PXE Boot",undionly.kpxe
-pxe-service=X86-64_EFI,"PXE Boot UEFI",ipxe.efi
-EOF
+          cat > /tmp/dnsmasq.conf << 'DNSMASQ_EOF'
+          port=0
+          interface=$INTERFACE
+          dhcp-range=$SUBNET,proxy
+          enable-tftp
+          tftp-root=/tftpboot
+          log-dhcp
+          dhcp-boot=undionly.kpxe
+          dhcp-match=set:efi-x86_64,option:client-arch,7
+          dhcp-match=set:efi-x86_64,option:client-arch,9
+          dhcp-boot=tag:efi-x86_64,ipxe.efi
+          pxe-service=x86PC,"PXE Boot",undionly.kpxe
+          pxe-service=X86-64_EFI,"PXE Boot UEFI",ipxe.efi
+          DNSMASQ_EOF
+          sed -i 's/^          //' /tmp/dnsmasq.conf
+          sed -i "s/\$INTERFACE/$INTERFACE/g; s/\$SUBNET/$SUBNET/g" /tmp/dnsmasq.conf
 
           echo "Starting dnsmasq on interface $INTERFACE (subnet $SUBNET)..."
           exec dnsmasq -k -C /tmp/dnsmasq.conf --log-facility=-
