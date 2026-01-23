@@ -25,7 +25,9 @@ spec:
 
           echo "Detecting subnet from interface ${INTERFACE}..."
           IP_CIDR=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | head -1)
-          SUBNET=$(ipcalc -n -b "${IP_CIDR}" | awk -F= '/^NETWORK=/{net=$2} /^PREFIX=/{pre=$2} END{print net"/"pre}')
+          PREFIX=$(echo "${IP_CIDR}" | cut -d/ -f2)
+          NETWORK=$(ipcalc -n "${IP_CIDR}" | awk -F= '/^NETWORK=/{print $2}')
+          SUBNET="${NETWORK}/${PREFIX}"
           echo "Detected subnet: ${SUBNET}"
 
           echo "Creating cache directory..."
