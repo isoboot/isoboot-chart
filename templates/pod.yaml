@@ -4,10 +4,9 @@ metadata:
   name: {{ include "isoboot.fullname" . }}
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
-  annotations:
-    k8s.v1.cni.cncf.io/networks: {{ include "isoboot.fullname" . }}-macvlan
 spec:
   restartPolicy: Always
+  hostNetwork: true
   containers:
     - name: pxe-server
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -17,8 +16,14 @@ spec:
         - -c
         - |
           set -e
-          echo "Installing dnsmasq..."
-          apk add --no-cache dnsmasq
+          INTERFACE="{{ .Values.interface }}"
+
+          echo "Installing dnsmasq and iproute2..."
+          apk add --no-cache dnsmasq iproute2
+
+          echo "Detecting subnet from interface $INTERFACE..."
+          SUBNET=$(ip -4 addr show "$INTERFACE" | awk '/inet / {split($2, a, "/"); split(a[1], b, "."); print b[1]"."b[2]"."b[3]".0"}' | head -1)
+          echo "Detected subnet: $SUBNET"
 
           echo "Setting up TFTP directory..."
           mkdir -p /tftpboot
@@ -30,8 +35,37 @@ spec:
           echo "iPXE files:"
           ls -la /tftpboot/
 
-          echo "Starting dnsmasq on interface net1..."
-          exec dnsmasq -k -C /etc/dnsmasq.conf --log-facility=-
+          echo "Generating dnsmasq config..."
+          cat > /tmp/dnsmasq.conf << EOF
+          # Disable DNS
+          port=0
+
+          # Bind to specific interface
+          interface=$INTERFACE
+
+          # Proxy DHCP mode
+          dhcp-range=$SUBNET,proxy
+
+          # Enable built-in TFTP server
+          enable-tftp
+          tftp-root=/tftpboot
+
+          # Log DHCP/TFTP activity
+          log-dhcp
+
+          # PXE boot options
+          dhcp-boot=undionly.kpxe
+          dhcp-match=set:efi-x86_64,option:client-arch,7
+          dhcp-match=set:efi-x86_64,option:client-arch,9
+          dhcp-boot=tag:efi-x86_64,ipxe.efi
+
+          # PXE service types
+          pxe-service=x86PC,"PXE Boot",undionly.kpxe
+          pxe-service=X86-64_EFI,"PXE Boot UEFI",ipxe.efi
+          EOF
+
+          echo "Starting dnsmasq on interface $INTERFACE (subnet $SUBNET)..."
+          exec dnsmasq -k -C /tmp/dnsmasq.conf --log-facility=-
       resources:
         {{- toYaml .Values.resources | nindent 8 }}
       securityContext:
@@ -53,12 +87,3 @@ spec:
             - dnsmasq
         initialDelaySeconds: 10
         periodSeconds: 10
-      volumeMounts:
-        - name: config
-          mountPath: /etc/dnsmasq.conf
-          subPath: dnsmasq.conf
-          readOnly: true
-  volumes:
-    - name: config
-      configMap:
-        name: {{ include "isoboot.fullname" . }}-config
