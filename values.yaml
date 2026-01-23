@@ -2,10 +2,28 @@
 # This value MUST be provided during install
 # interface: br1
 
+# HTTP server for boot files (future Go server)
+http:
+  port: 8080
+
 image:
   repository: alpine
-  tag: latest
-  pullPolicy: Always
+  tag: "3.23"
+  pullPolicy: IfNotPresent
+
+# Squid caching proxy
+proxy:
+  enabled: true
+  port: 3128
+  maxObjectSize: "500 MB"
+  cacheSize: 5000  # MB (~5GB)
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
 
 resources:
   limits:
