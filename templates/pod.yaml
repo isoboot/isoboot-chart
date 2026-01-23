@@ -16,17 +16,17 @@ spec:
         - -c
         - |
           set -e
-          echo "Installing dnsmasq and ipxe..."
-          apk add --no-cache dnsmasq ipxe
+          echo "Installing dnsmasq..."
+          apk add --no-cache dnsmasq
 
           echo "Setting up TFTP directory..."
           mkdir -p /tftpboot
-          cp /usr/share/ipxe/undionly.kpxe /tftpboot/ 2>/dev/null || echo "undionly.kpxe not found"
-          cp /usr/share/ipxe/ipxe.efi /tftpboot/ 2>/dev/null || echo "ipxe.efi not found"
 
-          # List available ipxe files
-          echo "Available iPXE files:"
-          ls -la /usr/share/ipxe/ || true
+          echo "Downloading iPXE binaries..."
+          wget -O /tftpboot/undionly.kpxe https://boot.ipxe.org/undionly.kpxe
+          wget -O /tftpboot/ipxe.efi https://boot.ipxe.org/ipxe.efi
+
+          echo "iPXE files:"
           ls -la /tftpboot/
 
           echo "Starting dnsmasq on interface {{ .Values.interface }}..."
@@ -38,6 +38,20 @@ spec:
           add:
             - NET_ADMIN
             - NET_RAW
+      livenessProbe:
+        exec:
+          command:
+            - pidof
+            - dnsmasq
+        initialDelaySeconds: 30
+        periodSeconds: 30
+      readinessProbe:
+        exec:
+          command:
+            - pidof
+            - dnsmasq
+        initialDelaySeconds: 10
+        periodSeconds: 10
       volumeMounts:
         - name: config
           mountPath: /etc/dnsmasq.conf

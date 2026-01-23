@@ -14,7 +14,7 @@ data:
     bind-interfaces
 
     # Proxy DHCP mode - don't act as DHCP server, just add PXE options
-    dhcp-range={{ required "interface is required" .Values.interface }},proxy
+    dhcp-range=0.0.0.0,proxy
 
     # Enable built-in TFTP server
     enable-tftp
