@@ -1,0 +1,81 @@
+{{- if .Values.proxy.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "isoboot.fullname" . }}-squid
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: proxy
+spec:
+  restartPolicy: Always
+  hostNetwork: true
+  containers:
+    - name: squid
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+
+          echo "Installing squid..."
+          apk add --no-cache squid
+
+          echo "Creating cache directory..."
+          mkdir -p /var/cache/squid
+          chown squid:squid /var/cache/squid
+
+          echo "Generating squid config..."
+          cat > /etc/squid/squid.conf << 'SQUID_EOF'
+          http_port {{ .Values.proxy.port }}
+
+          # Cache settings
+          cache_dir ufs /var/cache/squid {{ .Values.proxy.cacheSize }} 16 256
+          maximum_object_size {{ .Values.proxy.maxObjectSize }}
+          cache_mem 256 MB
+
+          # Allow local network
+          acl localnet src 10.0.0.0/8
+          acl localnet src 172.16.0.0/12
+          acl localnet src 192.168.0.0/16
+
+          # Safe ports
+          acl SSL_ports port 443
+          acl Safe_ports port 80
+          acl Safe_ports port 443
+          acl Safe_ports port 21
+          acl CONNECT method CONNECT
+
+          # Access rules
+          http_access deny !Safe_ports
+          http_access deny CONNECT !SSL_ports
+          http_access allow localhost manager
+          http_access deny manager
+          http_access allow localnet
+          http_access allow localhost
+          http_access deny all
+
+          # Cache aggressively for boot files
+          refresh_pattern -i \.(iso|gz|cpio|kpxe|efi)$ 10080 90% 43200 override-expire ignore-no-cache ignore-no-store
+          refresh_pattern . 0 20% 4320
+          SQUID_EOF
+
+          echo "Initializing cache..."
+          squid -z -N
+
+          echo "Starting squid on port {{ .Values.proxy.port }}..."
+          exec squid -N -d 1
+      resources:
+        {{- toYaml .Values.proxy.resources | nindent 8 }}
+      livenessProbe:
+        tcpSocket:
+          port: {{ .Values.proxy.port }}
+        initialDelaySeconds: 30
+        periodSeconds: 30
+      readinessProbe:
+        tcpSocket:
+          port: {{ .Values.proxy.port }}
+        initialDelaySeconds: 10
+        periodSeconds: 10
+{{- end }}

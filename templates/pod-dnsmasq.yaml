@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "isoboot.fullname" . }}-dnsmasq
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+spec:
+  restartPolicy: Always
+  hostNetwork: true
+  containers:
+    - name: pxe-server
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          INTERFACE="{{ required "interface is required (e.g., --set interface=br1)" .Values.interface }}"
+          HTTP_PORT="{{ .Values.http.port }}"
+
+          echo "Installing dnsmasq and iproute2..."
+          apk add --no-cache dnsmasq iproute2
+
+          echo "Detecting network info from interface ${INTERFACE}..."
+          SUBNET=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {split($2, a, "/"); split(a[1], b, "."); print b[1]"."b[2]"."b[3]".0"}' | head -1)
+          HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {split($2, a, "/"); print a[1]}' | head -1)
+          echo "Detected subnet: ${SUBNET}, host IP: ${HOST_IP}"
+
+          echo "Setting up TFTP directory..."
+          mkdir -p /tftpboot
+
+          echo "Downloading iPXE binaries..."
+          wget -O /tftpboot/undionly.kpxe https://boot.ipxe.org/undionly.kpxe
+          wget -O /tftpboot/ipxe.efi https://boot.ipxe.org/ipxe.efi
+
+          echo "iPXE files:"
+          ls -la /tftpboot/
+
+          echo "Generating dnsmasq config..."
+          cat > /tmp/dnsmasq.conf << 'DNSMASQ_EOF'
+          # Don't run DNS
+          port=0
+
+          # Bind to interface
+          interface=${INTERFACE}
+          bind-dynamic
+
+          # Prevent confusing legacy PXE ROMs
+          dhcp-no-override
+
+          # ProxyDHCP
+          dhcp-range=${SUBNET},proxy
+
+          # Architecture detection
+          dhcp-match=set:bios,option:client-arch,0
+          dhcp-match=set:efi64,option:client-arch,7
+          dhcp-match=set:efi64,option:client-arch,9
+
+          # iPXE detection
+          dhcp-match=set:ipxe,175
+
+          # PXE service entries (required for proxy mode - generates option 43)
+          pxe-service=tag:!ipxe,X86PC,"Network Boot",undionly.kpxe,${HOST_IP}
+          pxe-service=tag:!ipxe,X86-64_EFI,"Network Boot UEFI",ipxe.efi,${HOST_IP}
+          pxe-service=tag:!ipxe,BC_EFI,"Network Boot UEFI",ipxe.efi,${HOST_IP}
+
+          # iPXE clients get HTTP script
+          dhcp-boot=tag:ipxe,http://${HOST_IP}:${HTTP_PORT}/boot/boot.ipxe
+
+          # TFTP server
+          enable-tftp
+          tftp-root=/tftpboot
+
+          # Logging
+          log-dhcp
+          DNSMASQ_EOF
+          sed -i 's/^          //' /tmp/dnsmasq.conf
+          sed -i "s/\${INTERFACE}/${INTERFACE}/g; s/\${SUBNET}/${SUBNET}/g; s/\${HOST_IP}/${HOST_IP}/g; s/\${HTTP_PORT}/${HTTP_PORT}/g" /tmp/dnsmasq.conf
+
+          echo "dnsmasq config:"
+          cat /tmp/dnsmasq.conf
+
+          echo "Starting dnsmasq on interface ${INTERFACE} (subnet ${SUBNET})..."
+          exec dnsmasq -k -C /tmp/dnsmasq.conf --log-facility=-
+      resources:
+        {{- toYaml .Values.resources | nindent 8 }}
+      securityContext:
+        capabilities:
+          add:
+            - NET_ADMIN
+            - NET_RAW
+      livenessProbe:
+        exec:
+          command:
+            - pidof
+            - dnsmasq
+        initialDelaySeconds: 30
+        periodSeconds: 30
+      readinessProbe:
+        exec:
+          command:
+            - pidof
+            - dnsmasq
+        initialDelaySeconds: 10
+        periodSeconds: 10
