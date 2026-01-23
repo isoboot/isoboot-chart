@@ -16,7 +16,7 @@ spec:
         - -c
         - |
           set -e
-          INTERFACE="{{ .Values.interface }}"
+          INTERFACE="{{ required "interface is required (e.g., --set interface=br1)" .Values.interface }}"
 
           echo "Installing dnsmasq and iproute2..."
           apk add --no-cache dnsmasq iproute2

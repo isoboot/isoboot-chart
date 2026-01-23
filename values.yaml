@@ -1,6 +1,6 @@
-# Required: Network interface to bind to (e.g., enp4s0)
+# Required: Network interface to bind to (e.g., br1, eth0)
 # This value MUST be provided during install
-# interface: enp4s0
+# interface: br1
 
 image:
   repository: alpine
