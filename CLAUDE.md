@@ -49,6 +49,24 @@ sudo qemu-system-x86_64 \
   -vnc :0 -daemonize
 ```
 
+## Testing Go Code from Feature Branches
+
+When testing isoboot-http from a feature branch (not merged to main), use GOPROXY=direct with the commit hash:
+
+```bash
+# Get the commit hash from the feature branch
+git log --oneline feat/isoboot-http -1
+# e.g., 41f7471 feat: add isoboot-http server
+
+# Install directly from that commit (bypasses Go proxy cache)
+GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@41f7471
+```
+
+This approach:
+- Avoids merging unreviewed code to main
+- Bypasses the Go module proxy cache (which can take hours to update)
+- Is explicit about which version is being tested
+
 ## Common Issues
 
 - **Port 69 in use**: Another TFTP server is running. Remove it: `apt-get remove tftpd-hpa`

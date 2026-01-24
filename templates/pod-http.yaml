@@ -29,7 +29,7 @@ spec:
           echo "Detected host IP: ${HOST_IP}"
 
           echo "Installing isoboot-http..."
-          go install github.com/isoboot/isoboot/cmd/isoboot-http@latest
+          GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@96c5ac9
 
           echo "Starting isoboot-http on ${HOST_IP}:${HTTP_PORT}..."
           exec isoboot-http \
@@ -59,13 +59,13 @@ spec:
         httpGet:
           path: /healthz
           port: {{ .Values.http.port }}
-        initialDelaySeconds: 60
+        initialDelaySeconds: 180
         periodSeconds: 30
       readinessProbe:
         httpGet:
           path: /healthz
           port: {{ .Values.http.port }}
-        initialDelaySeconds: 30
+        initialDelaySeconds: 120
         periodSeconds: 10
   volumes:
     - name: iso-storage
