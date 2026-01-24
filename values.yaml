@@ -19,11 +19,11 @@ controller:
   commit: "1d33ee6"  # Git commit to install
   resources:
     limits:
-      memory: "256Mi"
-      cpu: "500m"
+      memory: "2Gi"
+      cpu: "1000m"
     requests:
-      memory: "128Mi"
-      cpu: "100m"
+      memory: "512Mi"
+      cpu: "200m"
 
 image:
   repository: alpine
