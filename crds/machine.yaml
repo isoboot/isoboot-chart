@@ -29,8 +29,8 @@ spec:
               properties:
                 mac:
                   type: string
-                  pattern: "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
-                  description: MAC address for this machine
+                  pattern: "^([0-9A-Fa-f]{2}-){5}([0-9A-Fa-f]{2})$"
+                  description: MAC address for this machine (dash-separated, e.g., aa-bb-cc-dd-ee-ff)
       additionalPrinterColumns:
         - name: MAC
           type: string
