@@ -2,9 +2,10 @@
 # This value MUST be provided during install
 # interface: br1
 
-# HTTP server for boot files
+# HTTP server for boot files (no k8s access, talks to controller via gRPC)
 http:
   port: 8080
+  commit: "7ac8aa0"  # Git commit to install
   resources:
     limits:
       memory: "2Gi"
@@ -12,6 +13,17 @@ http:
     requests:
       memory: "512Mi"
       cpu: "200m"
+
+# Controller (manages deploys, talks to k8s API)
+controller:
+  commit: "7ac8aa0"  # Git commit to install
+  resources:
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
 
 image:
   repository: alpine
