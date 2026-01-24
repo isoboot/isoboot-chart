@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-01-24
+
+### Added
+- Separate controller pod with gRPC server (k8s API access isolated)
+- Controller Service for internal gRPC communication
+- Squid caching proxy pod for package downloads
+
+### Changed
+- Split HTTP and controller into separate pods for security
+- HTTP pod no longer has Kubernetes API access
+- HTTP pod uses `dnsPolicy: ClusterFirstWithHostNet` to resolve cluster DNS
+- Controller memory increased to 2Gi for Go compilation
+- Updated to golang:1.25-alpine image
+
+### Fixed
+- Startup order issue: HTTP pod uses lazy gRPC connection
+- DNS resolution for hostNetwork pods
+
+### Tested With
+- Debian 13 (trixie) netboot - boots to installer screen
+- QEMU VM with UEFI PXE boot
+
 ## [0.2.0] - 2026-01-24
 
 ### Added

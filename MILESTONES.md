@@ -8,140 +8,82 @@
 
 ---
 
-## v0.2.0 - Debian 13 Netboot (Next)
+## v0.2.0 - Debian 13 Netboot (Complete)
 
-**Objective:** Boot to Debian 13 (trixie) installer screen with firmware support.
-
-### Target Files
-
-From Debian mirrors:
-- **Mini ISO:** `https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/mini.iso`
-- **Firmware:** `https://cdimage.debian.org/cdimage/firmware/trixie/current/firmware.cpio.gz`
-
-### Technical Approach
-
-1. **Extract from mini.iso:**
-   - `linux` (kernel)
-   - `initrd.gz` (initial ramdisk)
-
-2. **Combine initrd with firmware:**
-   ```bash
-   cat initrd.gz firmware.cpio.gz > initrd-firmware.gz
-   ```
-   (initramfs is concatenated cpio archives - kernel extracts them in order)
-
-3. **Serve via HTTP** (TFTP is too slow for large files)
-
-4. **iPXE boot script:**
-   ```ipxe
-   #!ipxe
-   kernel http://${server}/debian/linux
-   initrd http://${server}/debian/initrd-firmware.gz
-   boot
-   ```
-
-### New Components
-
-#### isoboot-http
-- HTTP server serving boot files
-- Downloads and prepares Debian netboot files at startup
-- Serves: kernel, combined initrd+firmware
-- Simple nginx or Python HTTP server
-
-#### isoboot-controller
-- Orchestrates file preparation
-- Downloads ISO and firmware
-- Extracts kernel/initrd from ISO
-- Combines initrd with firmware
-- Generates iPXE boot script
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    isoboot pod                          │
-├─────────────────┬─────────────────┬─────────────────────┤
-│   dnsmasq       │  isoboot-http   │ isoboot-controller  │
-│   (proxy DHCP)  │  (HTTP server)  │ (file prep)         │
-│   port 67,4011  │  port 8080      │                     │
-│   TFTP :69      │                 │                     │
-└─────────────────┴─────────────────┴─────────────────────┘
-         │                 │
-         │ iPXE            │ kernel, initrd
-         ▼                 ▼
-    ┌─────────┐      ┌───────────┐
-    │ PXE     │ ───► │ Debian    │
-    │ Client  │      │ Installer │
-    └─────────┘      └───────────┘
-```
-
-### Boot Flow
-
-1. PXE client broadcasts DHCP discover
-2. dnsmasq (proxy) responds with iPXE chainload
-3. Client downloads iPXE via TFTP
-4. iPXE executes boot script from HTTP
-5. iPXE downloads kernel + initrd-firmware.gz via HTTP
-6. Linux kernel boots into Debian installer
-
-### Files to Create
-
-```
-isoboot-chart/
-├── templates/
-│   ├── pod.yaml              # Update: add http container
-│   └── configmap.yaml        # iPXE boot script
-├── images/
-│   └── isoboot-controller/   # Dockerfile + scripts
-└── values.yaml               # Add http port, debian version
-```
-
-### Open Questions
-
-- [ ] Single pod with multiple containers vs separate pods?
-- [ ] Persistent volume for downloaded files or ephemeral?
-- [ ] How to detect/configure HTTP server IP for iPXE script?
+- HTTP server serving boot files (kernel, initrd)
+- On-demand ISO download with caching
+- Machine CRD for MAC-to-hostname mapping
+- Deploy CRD for installation state (Pending/InProgress/Completed)
+- iPXE conditional boot based on Deploy status
+- Firmware merging for non-free drivers
 
 ---
 
-## v0.3.0 - Custom Resource Definition (Future)
+## v0.3.0 - Controller/HTTP Split (Complete)
 
-**Objective:** Declarative boot configuration via Kubernetes CRD.
+- Separate controller and HTTP pods for security
+- Controller has k8s API access, HTTP does not
+- gRPC communication between pods
+- Squid caching proxy for package downloads
+- Boots to Debian 13 installer screen
 
-### Concept
+---
 
-```yaml
-apiVersion: isoboot.io/v1alpha1
-kind: BootConfig
-metadata:
-  name: debian-13
-spec:
-  os: debian
-  version: "13"
-  arch: amd64
-  firmware: true
-  preseed:
-    url: http://example.com/preseed.cfg
-```
+## v0.4.0 - Preseed Automation (Next)
 
-### Components
-
-- **CRD:** `BootConfig` custom resource
-- **Controller:** Watches BootConfig, generates iPXE scripts
-- **Webhook:** Validates BootConfig specs
+**Objective:** Fully automated Debian installation with preseed.
 
 ### Features
+- Preseed template with variables (hostname, domain, root password, etc.)
+- Per-machine preseed configuration via Deploy CRD
+- Late command support for post-install customization
+- Completion callback to mark Deploy as Completed
+- Partitioning presets (single disk, LVM, etc.)
 
-- Multiple OS support (Debian, Ubuntu, etc.)
-- Preseed/autoinstall configuration
-- Boot menu generation
-- Per-machine boot assignment (MAC-based)
+### Deploy CRD Extension
+```yaml
+apiVersion: isoboot.io/v1alpha1
+kind: Deploy
+metadata:
+  name: vm03-debian-13
+spec:
+  machineRef: vm03
+  target: debian-13
+  preseed:
+    hostname: vm03
+    domain: local
+    timezone: America/Los_Angeles
+    locale: en_US.UTF-8
+    rootPassword: "$6$..." # hashed
+    partitioning: lvm-single-disk
+    packages:
+      - openssh-server
+      - vim
+    lateCommand: |
+      curl http://{{.Host}}:{{.Port}}/dynamic/{{.MAC}}/complete
+```
+
+---
+
+## v0.5.0 - Multi-OS Support (Future)
+
+- Ubuntu Server support
+- Rocky Linux / AlmaLinux support
+- OS-specific templates (preseed, autoinstall, kickstart)
+
+---
+
+## v0.6.0 - Boot Menu (Future)
+
+- Interactive boot menu for multiple OS options
+- Default timeout with auto-boot
+- Machine-specific menu customization
 
 ---
 
 ## Future Ideas
 
-- v0.4.0: Ubuntu support
-- v0.5.0: Boot menu with multiple OS options
-- v0.6.0: Machine-specific boot configs (by MAC address)
-- v0.7.0: Preseed/autoinstall integration
+- Web UI for managing machines and deploys
+- PXE boot logging and metrics
+- Integration with external IPAM
+- Cloud-init support for cloud images
