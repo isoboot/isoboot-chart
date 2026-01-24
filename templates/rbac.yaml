@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "isoboot.fullname" . }}-http
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "isoboot.fullname" . }}-http
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["isoboot.io"]
+    resources: ["machines", "deploys"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["isoboot.io"]
+    resources: ["deploys/status"]
+    verbs: ["update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "isoboot.fullname" . }}-http
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "isoboot.fullname" . }}-http
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "isoboot.fullname" . }}-http
+    namespace: {{ .Release.Namespace }}

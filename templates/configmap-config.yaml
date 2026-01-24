@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "isoboot.fullname" . }}-config
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    targets:
+      {{- range $name, $target := .Values.targets }}
+      {{ $name }}:
+        iso: {{ $target.iso | quote }}
+        {{- if $target.firmware }}
+        firmware: {{ $target.firmware | quote }}
+        {{- end }}
+      {{- end }}

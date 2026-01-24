@@ -2,9 +2,16 @@
 # This value MUST be provided during install
 # interface: br1
 
-# HTTP server for boot files (future Go server)
+# HTTP server for boot files
 http:
   port: 8080
+  resources:
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
 
 image:
   repository: alpine
@@ -32,3 +39,9 @@ resources:
   requests:
     memory: "64Mi"
     cpu: "100m"
+
+# Boot targets
+targets:
+  debian-13:
+    iso: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/mini.iso"
+    firmware: "https://cdimage.debian.org/cdimage/firmware/trixie/current/firmware.cpio.gz"

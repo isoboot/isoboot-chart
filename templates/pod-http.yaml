@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "isoboot.fullname" . }}-http
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: http
+spec:
+  restartPolicy: Always
+  hostNetwork: true
+  serviceAccountName: {{ include "isoboot.fullname" . }}-http
+  containers:
+    - name: http
+      image: "golang:1.23-alpine"
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          INTERFACE="{{ required "interface is required" .Values.interface }}"
+          HTTP_PORT="{{ .Values.http.port }}"
+
+          echo "Installing git and iproute2..."
+          apk add --no-cache git iproute2
+
+          echo "Detecting host IP from interface ${INTERFACE}..."
+          HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
+          echo "Detected host IP: ${HOST_IP}"
+
+          echo "Installing isoboot-http..."
+          go install github.com/isoboot/isoboot/cmd/isoboot-http@latest
+
+          echo "Starting isoboot-http on ${HOST_IP}:${HTTP_PORT}..."
+          exec isoboot-http \
+            --host="${HOST_IP}" \
+            --port="${HTTP_PORT}" \
+            --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
+            --iso-path="/opt/isoboot/iso" \
+            --config="/etc/isoboot/config.yaml" \
+            --namespace="{{ .Release.Namespace }}"
+      env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      ports:
+        - name: http
+          containerPort: {{ .Values.http.port }}
+          protocol: TCP
+      volumeMounts:
+        - name: iso-storage
+          mountPath: /opt/isoboot/iso
+        - name: config
+          mountPath: /etc/isoboot
+      resources:
+        {{- toYaml .Values.http.resources | nindent 8 }}
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: {{ .Values.http.port }}
+        initialDelaySeconds: 60
+        periodSeconds: 30
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: {{ .Values.http.port }}
+        initialDelaySeconds: 30
+        periodSeconds: 10
+  volumes:
+    - name: iso-storage
+      hostPath:
+        path: /opt/isoboot/iso
+        type: DirectoryOrCreate
+    - name: config
+      configMap:
+        name: {{ include "isoboot.fullname" . }}-config
