@@ -30,8 +30,12 @@ spec:
                 files:
                   type: object
                   description: Map of filename to template content with Go template placeholders
+                  minProperties: 1
                   additionalProperties:
                     type: string
+                  x-kubernetes-validations:
+                    - rule: "self.all(k, k.matches('^[A-Za-z0-9][-A-Za-z0-9_.]*$'))"
+                      message: "File names must be valid path components (no slashes or path traversal)"
       additionalPrinterColumns:
         - name: Age
           type: date
