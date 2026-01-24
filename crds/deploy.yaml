@@ -31,9 +31,7 @@ spec:
                   description: Reference to a Machine resource name
                 target:
                   type: string
-                  enum:
-                    - debian-13
-                  description: Target OS to deploy
+                  description: Reference to a BootTarget resource name
             status:
               type: object
               properties:
