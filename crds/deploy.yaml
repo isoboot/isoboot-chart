@@ -25,6 +25,7 @@ spec:
               required:
                 - machineRef
                 - target
+                - responseTemplateRef
               properties:
                 machineRef:
                   type: string
@@ -32,6 +33,19 @@ spec:
                 target:
                   type: string
                   description: Reference to a BootTarget resource name
+                responseTemplateRef:
+                  type: string
+                  description: Reference to a ResponseTemplate resource name
+                configMaps:
+                  type: array
+                  description: Array of ConfigMap names for template values (merged in order)
+                  items:
+                    type: string
+                secrets:
+                  type: array
+                  description: Array of Secret names for template values (merged after configMaps)
+                  items:
+                    type: string
             status:
               type: object
               properties:
@@ -42,6 +56,7 @@ spec:
                     - InProgress
                     - Completed
                     - Failed
+                    - ConfigError
                   default: Pending
                 message:
                   type: string
