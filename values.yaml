@@ -5,7 +5,7 @@
 # HTTP server for boot files (no k8s access, talks to controller via gRPC)
 http:
   port: 8080
-  commit: "7ac8aa0"  # Git commit to install
+  commit: "6fa56d4"  # Git commit to install
   resources:
     limits:
       memory: "2Gi"
@@ -16,7 +16,7 @@ http:
 
 # Controller (manages deploys, talks to k8s API)
 controller:
-  commit: "7ac8aa0"  # Git commit to install
+  commit: "6fa56d4"  # Git commit to install
   resources:
     limits:
       memory: "256Mi"

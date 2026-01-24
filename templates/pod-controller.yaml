@@ -10,7 +10,7 @@ spec:
   serviceAccountName: {{ include "isoboot.fullname" . }}-controller
   containers:
     - name: controller
-      image: "golang:1.23-alpine"
+      image: "golang:1.25-alpine"
       imagePullPolicy: IfNotPresent
       command:
         - /bin/sh
