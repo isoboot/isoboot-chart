@@ -9,10 +9,10 @@ http:
   resources:
     limits:
       memory: "2Gi"
-      cpu: "1000m"
+      cpu: "2000m"
     requests:
       memory: "512Mi"
-      cpu: "200m"
+      cpu: "500m"
 
 # Controller (manages deploys, talks to k8s API)
 controller:
@@ -20,17 +20,17 @@ controller:
   resources:
     limits:
       memory: "2Gi"
-      cpu: "1000m"
+      cpu: "2000m"
     requests:
       memory: "512Mi"
-      cpu: "200m"
+      cpu: "500m"
 
 image:
   repository: alpine
   tag: "3.23"
   pullPolicy: IfNotPresent
 
-# Squid caching proxy
+# Squid caching proxy (for boot files, not Go modules)
 proxy:
   enabled: true
   port: 3128

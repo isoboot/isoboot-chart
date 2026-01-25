@@ -1,0 +1,123 @@
+{{- if .Values.proxy.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "isoboot.fullname" . }}-squid
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "isoboot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: proxy
+  template:
+    metadata:
+      labels:
+        {{- include "isoboot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: proxy
+    spec:
+      hostNetwork: true
+      containers:
+        - name: squid
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              INTERFACE="{{ required "interface is required" .Values.interface }}"
+
+              echo "Installing squid, iproute2, and ipcalc..."
+              apk add --no-cache squid iproute2 ipcalc
+
+              echo "Detecting subnet from interface ${INTERFACE}..."
+              IP_CIDR=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | head -1)
+              PREFIX=$(echo "${IP_CIDR}" | cut -d/ -f2)
+              NETWORK=$(ipcalc -n "${IP_CIDR}" | awk -F= '/^NETWORK=/{print $2}')
+              SUBNET="${NETWORK}/${PREFIX}"
+              echo "Detected subnet: ${SUBNET}"
+
+              echo "Setting up cache directory..."
+              mkdir -p /var/spool/squid
+              chown squid:squid /var/spool/squid
+
+              echo "Generating squid config..."
+              cat > /etc/squid/squid.conf << SQUID_EOF
+              http_port {{ .Values.proxy.port }}
+
+              # Cache settings
+              cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
+              maximum_object_size {{ .Values.proxy.maxObjectSize }}
+              cache_mem 256 MB
+
+              # Allow RFC1918 private networks
+              acl localnet src 10.0.0.0/8
+              acl localnet src 172.16.0.0/12
+              acl localnet src 192.168.0.0/16
+
+              # Safe ports
+              acl SSL_ports port 443
+              acl Safe_ports port 80
+              acl Safe_ports port 443
+              acl Safe_ports port {{ .Values.http.port }}
+              acl CONNECT method CONNECT
+
+              # Access rules
+              http_access deny !Safe_ports
+              http_access deny CONNECT !SSL_ports
+              http_access allow localhost manager
+              http_access deny manager
+              http_access allow localnet
+              http_access allow localhost
+              http_access deny all
+
+              # Cache aggressively for boot files
+              refresh_pattern -i \.(iso|gz|cpio|kpxe|efi)$ 10080 90% 43200 override-expire ignore-no-cache ignore-no-store
+              refresh_pattern . 0 20% 4320
+              SQUID_EOF
+
+              echo "Initializing cache..."
+              squid -z -N
+
+              echo "Starting squid on port {{ .Values.proxy.port }}..."
+              exec squid -N -d 1
+          volumeMounts:
+            - name: squid-cache
+              mountPath: /var/spool/squid
+          resources:
+            {{- toYaml .Values.proxy.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.proxy.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.proxy.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: squid-cache
+          hostPath:
+            path: /var/cache/isoboot/squid
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "isoboot.fullname" . }}-squid
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "isoboot.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: proxy
+  ports:
+    - name: http
+      port: {{ .Values.proxy.port }}
+      targetPort: {{ .Values.proxy.port }}
+      protocol: TCP
+{{- end }}

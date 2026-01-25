@@ -45,7 +45,10 @@ crds/                 # Custom Resource Definitions
 └── responsetemplate.yaml
 templates/            # Kubernetes resources
 ├── _helpers.tpl
-├── pod-*.yaml
+├── deployment-controller.yaml  # Deployment (auto-restart)
+├── deployment-http.yaml        # Deployment (hostNetwork)
+├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
+├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
 ├── boottarget-*.yaml
 └── ...
 files/                # Template files loaded via .Files.Get
@@ -132,8 +135,16 @@ This approach:
 helm install isoboot . --set interface=br1
 
 # Check logs
-kubectl logs -f isoboot-isoboot-chart
+kubectl logs -f deployment/isoboot-isoboot-chart-controller
+kubectl logs -f deployment/isoboot-isoboot-chart-http
 
-# Reinstall (pod is immutable)
+# Upgrade (deployments auto-restart)
+helm upgrade isoboot . --set interface=br1
+
+# Restart a deployment to pick up new code
+kubectl rollout restart deployment/isoboot-isoboot-chart-controller
+kubectl rollout restart deployment/isoboot-isoboot-chart-http
+
+# Reinstall dnsmasq pod (still a pod, not deployment)
 helm uninstall isoboot && helm install isoboot . --set interface=br1
 ```
