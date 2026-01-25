@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "isoboot.fullname" . }}-http
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: http
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "isoboot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: http
+  template:
+    metadata:
+      labels:
+        {{- include "isoboot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: http
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: http
+          image: "golang:1.25-alpine"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              INTERFACE="{{ required "interface is required" .Values.interface }}"
+              HTTP_PORT="{{ .Values.http.port }}"
+              CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:8081"
+
+              echo "Installing git and iproute2..."
+              apk add --no-cache git iproute2
+
+              echo "Detecting host IP from interface ${INTERFACE}..."
+              HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
+              echo "Detected host IP: ${HOST_IP}"
+
+              echo "Installing isoboot-http..."
+              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
+
+              echo "Starting isoboot-http on ${HOST_IP}:${HTTP_PORT}..."
+              echo "Connecting to controller at ${CONTROLLER_ADDR}..."
+              exec isoboot-http \
+                --host="${HOST_IP}" \
+                --port="${HTTP_PORT}" \
+                --controller="${CONTROLLER_ADDR}" \
+                --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
+                --iso-path="/opt/isoboot/iso" \
+                --config="/etc/isoboot/config.yaml"
+          env:
+            - name: HTTP_PROXY
+              value: "http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
+            - name: HTTPS_PROXY
+              value: "http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.http.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: iso-storage
+              mountPath: /opt/isoboot/iso
+            - name: config
+              mountPath: /etc/isoboot
+          resources:
+            {{- toYaml .Values.http.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.port }}
+            initialDelaySeconds: 180
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.port }}
+            initialDelaySeconds: 120
+            periodSeconds: 10
+      volumes:
+        - name: iso-storage
+          hostPath:
+            path: /opt/isoboot/iso
+            type: DirectoryOrCreate
+        - name: config
+          configMap:
+            name: {{ include "isoboot.fullname" . }}-config
