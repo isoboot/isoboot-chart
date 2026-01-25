@@ -24,13 +24,13 @@ spec:
               type: object
               required:
                 - machineRef
-                - target
+                - bootTargetRef
                 - responseTemplateRef
               properties:
                 machineRef:
                   type: string
                   description: Reference to a Machine resource name
-                target:
+                bootTargetRef:
                   type: string
                   description: Reference to a BootTarget resource name
                 responseTemplateRef:
@@ -56,6 +56,7 @@ spec:
                   type: string
                   enum:
                     - Pending
+                    - WaitingForDiskImage
                     - InProgress
                     - Completed
                     - Failed
@@ -72,9 +73,9 @@ spec:
         - name: Machine
           type: string
           jsonPath: .spec.machineRef
-        - name: Target
+        - name: BootTarget
           type: string
-          jsonPath: .spec.target
+          jsonPath: .spec.bootTargetRef
         - name: Status
           type: string
           jsonPath: .status.phase
