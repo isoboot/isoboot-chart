@@ -31,10 +31,9 @@ spec:
               INTERFACE="{{ required "interface is required" .Values.interface }}"
               HTTP_PORT="{{ .Values.http.port }}"
               CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:8081"
-              PROXY_URL="http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
 
-              echo "Installing dependencies..."
-              apk add --no-cache git iproute2 netcat-openbsd
+              echo "Installing git and iproute2..."
+              apk add --no-cache git iproute2
 
               echo "Detecting host IP from interface ${INTERFACE}..."
               HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
@@ -52,7 +51,6 @@ spec:
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
                 --iso-path="/opt/isoboot/iso" \
                 --config="/etc/isoboot/config.yaml"
-          env: []
           ports:
             - name: http
               containerPort: {{ .Values.http.port }}

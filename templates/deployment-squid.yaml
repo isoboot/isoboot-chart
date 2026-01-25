@@ -48,7 +48,7 @@ spec:
               cat > /etc/squid/squid.conf << SQUID_EOF
               http_port {{ .Values.proxy.port }}
 
-              # Cache settings - use mounted hostPath volume
+              # Cache settings
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
               cache_mem 256 MB
@@ -74,9 +74,8 @@ spec:
               http_access allow localhost
               http_access deny all
 
-              # Cache aggressively for boot files and Go modules
+              # Cache aggressively for boot files
               refresh_pattern -i \.(iso|gz|cpio|kpxe|efi)$ 10080 90% 43200 override-expire ignore-no-cache ignore-no-store
-              refresh_pattern -i /mod/cache/ 10080 90% 43200 override-expire ignore-no-cache ignore-no-store
               refresh_pattern . 0 20% 4320
               SQUID_EOF
 

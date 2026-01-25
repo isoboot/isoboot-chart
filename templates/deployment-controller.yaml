@@ -27,10 +27,9 @@ spec:
             - -c
             - |
               set -e
-              PROXY_URL="http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
 
-              echo "Installing dependencies..."
-              apk add --no-cache git netcat-openbsd
+              echo "Installing git..."
+              apk add --no-cache git
 
               echo "Installing isoboot-controller..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.controller.commit }}

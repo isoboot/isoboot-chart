@@ -25,24 +25,12 @@ controller:
       memory: "512Mi"
       cpu: "500m"
 
-# Go module proxy (caches Go modules for faster builds)
-goproxy:
-  enabled: false
-  port: 8081
-  resources:
-    limits:
-      memory: "512Mi"
-      cpu: "500m"
-    requests:
-      memory: "128Mi"
-      cpu: "100m"
-
 image:
   repository: alpine
   tag: "3.23"
   pullPolicy: IfNotPresent
 
-# Squid caching proxy
+# Squid caching proxy (for boot files, not Go modules)
 proxy:
   enabled: true
   port: 3128
