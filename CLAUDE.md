@@ -45,7 +45,7 @@ crds/                 # Custom Resource Definitions
 └── responsetemplate.yaml
 templates/            # Kubernetes resources
 ├── _helpers.tpl
-├── pod.yaml
+├── pod-*.yaml
 ├── boottarget-*.yaml
 └── ...
 files/                # Template files loaded via .Files.Get
