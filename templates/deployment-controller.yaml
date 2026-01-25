@@ -37,7 +37,8 @@ spec:
               echo "Starting isoboot-controller on :8081..."
               exec isoboot-controller \
                 --port="8081" \
-                --namespace="{{ .Release.Namespace }}"
+                --namespace="{{ .Release.Namespace }}" \
+                --iso-path="/opt/isoboot/iso"
           env:
             - name: POD_NAMESPACE
               valueFrom:
@@ -52,6 +53,8 @@ spec:
           volumeMounts:
             - name: go-cache
               mountPath: /go
+            - name: iso-storage
+              mountPath: /opt/isoboot/iso
           resources:
             {{- toYaml .Values.controller.resources | nindent 12 }}
           livenessProbe:
@@ -68,6 +71,10 @@ spec:
         - name: go-cache
           hostPath:
             path: /var/cache/isoboot/go/controller
+            type: DirectoryOrCreate
+        - name: iso-storage
+          hostPath:
+            path: /opt/isoboot/iso
             type: DirectoryOrCreate
 ---
 apiVersion: v1
