@@ -1,10 +1,22 @@
 # CLAUDE.md
 
-This file provides context for Claude Code when working on this project.
+Helm chart for isoboot - PXE boot infrastructure on Kubernetes.
 
-## Project Overview
+## Project Context
 
-isoboot-chart is a Helm chart that deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. It enables network booting (PXE) without replacing your existing DHCP server.
+This repo works alongside `isoboot` (Go code for controller and HTTP server). Together they provide:
+- **dnsmasq**: Proxy DHCP for PXE boot (this chart)
+- **isoboot-controller**: Watches Deploy CRs, manages boot workflows (Go repo)
+- **isoboot-http**: Serves iPXE scripts, ISO content, answer files (Go repo)
+
+## Git Conventions
+
+- **Never force push** - use squash merge at PR merge time
+- PRs required for main branch
+
+## Chart Overview
+
+Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network booting without replacing your existing DHCP server.
 
 ## Architecture
 
@@ -25,12 +37,52 @@ isoboot-chart is a Helm chart that deploys a PXE boot proxy DHCP server using dn
 ## File Structure
 
 ```
-templates/
-├── _helpers.tpl    # Helm template helpers (name, labels)
-└── pod.yaml        # Main pod definition with embedded startup script
-values.yaml         # Default values (image, resources)
-Chart.yaml          # Chart metadata
+crds/                 # Custom Resource Definitions
+├── machine.yaml
+├── deploy.yaml
+├── boottarget.yaml
+├── diskimage.yaml
+└── responsetemplate.yaml
+templates/            # Kubernetes resources
+├── _helpers.tpl
+├── pod-*.yaml
+├── boottarget-*.yaml
+└── ...
+files/                # Template files loaded via .Files.Get
+└── boottarget-debian-13.tpl
+values.yaml
+Chart.yaml
 ```
+
+## CRD Guidelines
+
+### Escaping Go Templates in Helm
+When CRD specs contain Go templates (e.g., BootTarget.spec.template), use `.Files.Get` to avoid ugly escaping:
+
+```yaml
+# In templates/boottarget-foo.yaml
+spec:
+  template: |
+{{ .Files.Get "files/boottarget-foo.tpl" | indent 4 }}
+```
+
+```
+# In files/boottarget-foo.tpl (clean Go template syntax)
+kernel http://{{ .Host }}:{{ .Port }}/iso/content/...
+```
+
+### CRD Validation
+Use OpenAPI validation in CRDs:
+- `minLength: 1` for required string fields
+- `minProperties: 1` for required map fields
+- `x-kubernetes-validations` for CEL rules (pattern matching, etc.)
+
+### Deploy Status Phases
+- `Pending` - Waiting for machine to PXE boot
+- `InProgress` - Boot started, installation running
+- `Completed` - Installation finished successfully
+- `Failed` - Installation failed
+- `ConfigError` - Missing referenced resources (self-heals when created)
 
 ## Testing
 
