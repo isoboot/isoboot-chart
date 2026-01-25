@@ -43,22 +43,32 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: GOCACHE
+              value: /go/cache
           ports:
             - name: grpc
               containerPort: 8081
               protocol: TCP
+          volumeMounts:
+            - name: go-cache
+              mountPath: /go
           resources:
             {{- toYaml .Values.controller.resources | nindent 12 }}
           livenessProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 120
+            initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
             tcpSocket:
               port: 8081
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: go-cache
+          hostPath:
+            path: /var/cache/isoboot/go/controller
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service

@@ -51,6 +51,9 @@ spec:
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
                 --iso-path="/opt/isoboot/iso" \
                 --config="/etc/isoboot/config.yaml"
+          env:
+            - name: GOCACHE
+              value: /go/cache
           ports:
             - name: http
               containerPort: {{ .Values.http.port }}
@@ -60,20 +63,22 @@ spec:
               mountPath: /opt/isoboot/iso
             - name: config
               mountPath: /etc/isoboot
+            - name: go-cache
+              mountPath: /go
           resources:
             {{- toYaml .Values.http.resources | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /healthz
               port: {{ .Values.http.port }}
-            initialDelaySeconds: 180
+            initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /healthz
               port: {{ .Values.http.port }}
-            initialDelaySeconds: 120
-            periodSeconds: 10
+            initialDelaySeconds: 10
+            periodSeconds: 5
       volumes:
         - name: iso-storage
           hostPath:
@@ -82,3 +87,7 @@ spec:
         - name: config
           configMap:
             name: {{ include "isoboot.fullname" . }}-config
+        - name: go-cache
+          hostPath:
+            path: /var/cache/isoboot/go/http
+            type: DirectoryOrCreate
