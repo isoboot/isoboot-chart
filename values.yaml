@@ -9,10 +9,10 @@ http:
   resources:
     limits:
       memory: "2Gi"
-      cpu: "1000m"
+      cpu: "2000m"
     requests:
       memory: "512Mi"
-      cpu: "200m"
+      cpu: "500m"
 
 # Controller (manages deploys, talks to k8s API)
 controller:
@@ -20,10 +20,22 @@ controller:
   resources:
     limits:
       memory: "2Gi"
-      cpu: "1000m"
+      cpu: "2000m"
     requests:
       memory: "512Mi"
-      cpu: "200m"
+      cpu: "500m"
+
+# Go module proxy (caches Go modules for faster builds)
+goproxy:
+  enabled: false
+  port: 8081
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
 
 image:
   repository: alpine

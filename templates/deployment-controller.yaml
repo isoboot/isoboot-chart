@@ -32,20 +32,8 @@ spec:
               echo "Installing dependencies..."
               apk add --no-cache git netcat-openbsd
 
-              echo "Waiting for squid proxy..."
-              SQUID_HOST="{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local"
-              for i in $(seq 1 30); do
-                if nc -z "$SQUID_HOST" {{ .Values.proxy.port }} 2>/dev/null; then
-                  echo "Squid is ready"
-                  break
-                fi
-                echo "Waiting for squid ($i/30)..."
-                sleep 2
-              done
-
               echo "Installing isoboot-controller..."
-              HTTP_PROXY="$PROXY_URL" HTTPS_PROXY="$PROXY_URL" GOPROXY=direct \
-                go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.controller.commit }}
+              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.controller.commit }}
 
               echo "Starting isoboot-controller on :8081..."
               exec isoboot-controller \

@@ -40,20 +40,8 @@ spec:
               HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
               echo "Detected host IP: ${HOST_IP}"
 
-              echo "Waiting for squid proxy..."
-              SQUID_HOST="{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local"
-              for i in $(seq 1 30); do
-                if nc -z "$SQUID_HOST" {{ .Values.proxy.port }} 2>/dev/null; then
-                  echo "Squid is ready"
-                  break
-                fi
-                echo "Waiting for squid ($i/30)..."
-                sleep 2
-              done
-
               echo "Installing isoboot-http..."
-              HTTP_PROXY="$PROXY_URL" HTTPS_PROXY="$PROXY_URL" GOPROXY=direct \
-                go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
+              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
 
               echo "Starting isoboot-http on ${HOST_IP}:${HTTP_PORT}..."
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."

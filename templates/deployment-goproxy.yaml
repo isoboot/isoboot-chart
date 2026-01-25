@@ -1,0 +1,74 @@
+{{- if .Values.goproxy.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "isoboot.fullname" . }}-goproxy
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: goproxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "isoboot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: goproxy
+  template:
+    metadata:
+      labels:
+        {{- include "isoboot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: goproxy
+    spec:
+      containers:
+        - name: goproxy
+          image: "goproxy/goproxy:latest"
+          imagePullPolicy: IfNotPresent
+          args:
+            - -listen
+            - "0.0.0.0:{{ .Values.goproxy.port }}"
+            - -cacheDir
+            - /go/cache
+            - -proxy
+            - "https://proxy.golang.org"
+          ports:
+            - name: http
+              containerPort: {{ .Values.goproxy.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: goproxy-cache
+              mountPath: /go/cache
+          resources:
+            {{- toYaml .Values.goproxy.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.goproxy.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.goproxy.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: goproxy-cache
+          hostPath:
+            path: /var/cache/isoboot/goproxy
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "isoboot.fullname" . }}-goproxy
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "isoboot.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: goproxy
+  ports:
+    - name: http
+      port: {{ .Values.goproxy.port }}
+      targetPort: {{ .Values.goproxy.port }}
+      protocol: TCP
+{{- end }}
