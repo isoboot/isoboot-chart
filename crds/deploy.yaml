@@ -58,7 +58,7 @@ spec:
                     - Pending
                     - WaitingForDiskImage
                     - InProgress
-                    - Completed
+                    - Complete
                     - Failed
                     - ConfigError
                   default: Pending
