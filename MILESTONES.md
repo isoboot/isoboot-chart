@@ -60,7 +60,7 @@ spec:
       - openssh-server
       - vim
     lateCommand: |
-      curl http://{{.Host}}:{{.Port}}/dynamic/{{.MAC}}/complete
+      curl -X POST http://{{.Host}}:{{.Port}}/api/deploy/{{.Hostname}}/complete
 ```
 
 ---
