@@ -13,13 +13,13 @@ metadata:
     {{- include "isoboot.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
-    resources: ["configmaps"]
+    resources: ["configmaps", "secrets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["isoboot.io"]
-    resources: ["machines", "deploys"]
+    resources: ["machines", "deploys", "diskimages", "boottargets", "responsetemplates"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["isoboot.io"]
-    resources: ["deploys/status"]
+    resources: ["deploys/status", "diskimages/status"]
     verbs: ["update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

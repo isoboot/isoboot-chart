@@ -25,7 +25,66 @@ spec:
                 firmware:
                   type: string
                   description: URL to firmware archive (optional)
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum:
+                    - Pending
+                    - Downloading
+                    - Complete
+                    - Failed
+                  default: Pending
+                progress:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Download progress percentage
+                message:
+                  type: string
+                  description: Human-readable status message
+                iso:
+                  type: object
+                  description: Verification status for ISO file
+                  properties:
+                    fileSizeMatch:
+                      type: string
+                      enum: [pending, processing, verified, failed]
+                    digestSha512:
+                      type: string
+                      enum: [pending, processing, verified, failed, not_found]
+                    digestSha256:
+                      type: string
+                      enum: [pending, processing, verified, failed, not_found]
+                    digestMd5:
+                      type: string
+                      enum: [pending, processing, verified, failed, not_found]
+                firmware:
+                  type: object
+                  description: Verification status for firmware file (only present if spec.firmware is set)
+                  properties:
+                    fileSizeMatch:
+                      type: string
+                      enum: [pending, processing, verified, failed]
+                    digestSha512:
+                      type: string
+                      enum: [pending, processing, verified, failed, not_found]
+                    digestSha256:
+                      type: string
+                      enum: [pending, processing, verified, failed, not_found]
+                    digestMd5:
+                      type: string
+                      enum: [pending, processing, verified, failed, not_found]
+      subresources:
+        status: {}
       additionalPrinterColumns:
+        - name: Status
+          type: string
+          jsonPath: .status.phase
+        - name: Progress
+          type: integer
+          jsonPath: .status.progress
         - name: ISO
           type: string
           jsonPath: .spec.iso

@@ -13,7 +13,7 @@
 - HTTP server serving boot files (kernel, initrd)
 - On-demand ISO download with caching
 - Machine CRD for MAC-to-hostname mapping
-- Deploy CRD for installation state (Pending/InProgress/Completed)
+- Deploy CRD for installation state (Pending/InProgress/Complete)
 - iPXE conditional boot based on Deploy status
 - Firmware merging for non-free drivers
 
@@ -37,7 +37,7 @@
 - Preseed template with variables (hostname, domain, root password, etc.)
 - Per-machine preseed configuration via Deploy CRD
 - Late command support for post-install customization
-- Completion callback to mark Deploy as Completed
+- Completion callback to mark Deploy as Complete
 - Partitioning presets (single disk, LVM, etc.)
 
 ### Deploy CRD Extension
@@ -48,7 +48,7 @@ metadata:
   name: vm03-debian-13
 spec:
   machineRef: vm03
-  target: debian-13
+  bootTargetRef: debian-13
   preseed:
     hostname: vm03
     domain: local
