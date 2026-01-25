@@ -31,16 +31,29 @@ spec:
               INTERFACE="{{ required "interface is required" .Values.interface }}"
               HTTP_PORT="{{ .Values.http.port }}"
               CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:8081"
+              PROXY_URL="http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
 
-              echo "Installing git and iproute2..."
-              apk add --no-cache git iproute2
+              echo "Installing dependencies..."
+              apk add --no-cache git iproute2 netcat-openbsd
 
               echo "Detecting host IP from interface ${INTERFACE}..."
               HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
               echo "Detected host IP: ${HOST_IP}"
 
+              echo "Waiting for squid proxy..."
+              SQUID_HOST="{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local"
+              for i in $(seq 1 30); do
+                if nc -z "$SQUID_HOST" {{ .Values.proxy.port }} 2>/dev/null; then
+                  echo "Squid is ready"
+                  break
+                fi
+                echo "Waiting for squid ($i/30)..."
+                sleep 2
+              done
+
               echo "Installing isoboot-http..."
-              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
+              HTTP_PROXY="$PROXY_URL" HTTPS_PROXY="$PROXY_URL" GOPROXY=direct \
+                go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
 
               echo "Starting isoboot-http on ${HOST_IP}:${HTTP_PORT}..."
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."
@@ -51,11 +64,7 @@ spec:
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
                 --iso-path="/opt/isoboot/iso" \
                 --config="/etc/isoboot/config.yaml"
-          env:
-            - name: HTTP_PROXY
-              value: "http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
-            - name: HTTPS_PROXY
-              value: "http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
+          env: []
           ports:
             - name: http
               containerPort: {{ .Values.http.port }}

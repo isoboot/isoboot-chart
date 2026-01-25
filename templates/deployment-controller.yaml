@@ -27,12 +27,25 @@ spec:
             - -c
             - |
               set -e
+              PROXY_URL="http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
 
-              echo "Installing git..."
-              apk add --no-cache git
+              echo "Installing dependencies..."
+              apk add --no-cache git netcat-openbsd
+
+              echo "Waiting for squid proxy..."
+              SQUID_HOST="{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local"
+              for i in $(seq 1 30); do
+                if nc -z "$SQUID_HOST" {{ .Values.proxy.port }} 2>/dev/null; then
+                  echo "Squid is ready"
+                  break
+                fi
+                echo "Waiting for squid ($i/30)..."
+                sleep 2
+              done
 
               echo "Installing isoboot-controller..."
-              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.controller.commit }}
+              HTTP_PROXY="$PROXY_URL" HTTPS_PROXY="$PROXY_URL" GOPROXY=direct \
+                go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.controller.commit }}
 
               echo "Starting isoboot-controller on :8081..."
               exec isoboot-controller \
@@ -43,10 +56,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: HTTP_PROXY
-              value: "http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
-            - name: HTTPS_PROXY
-              value: "http://{{ include "isoboot.fullname" . }}-squid.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.proxy.port }}"
           ports:
             - name: grpc
               containerPort: 8081

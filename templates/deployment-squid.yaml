@@ -53,10 +53,10 @@ spec:
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
               cache_mem 256 MB
 
-              # Allow local network
-              acl localnet src ${SUBNET}
-              # Allow cluster network for pods
-              acl cluster src 10.0.0.0/8
+              # Allow RFC1918 private networks
+              acl localnet src 10.0.0.0/8
+              acl localnet src 172.16.0.0/12
+              acl localnet src 192.168.0.0/16
 
               # Safe ports
               acl SSL_ports port 443
@@ -71,7 +71,6 @@ spec:
               http_access allow localhost manager
               http_access deny manager
               http_access allow localnet
-              http_access allow cluster
               http_access allow localhost
               http_access deny all
 
