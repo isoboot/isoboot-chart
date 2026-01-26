@@ -14,7 +14,7 @@ http:
       memory: "512Mi"
       cpu: "500m"
 
-# Controller (manages deploys, talks to k8s API)
+# Controller (manages provisions, talks to k8s API)
 controller:
   commit: "11cde00"  # Git commit to install
   resources:
