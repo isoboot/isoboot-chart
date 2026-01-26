@@ -13,8 +13,8 @@
 - HTTP server serving boot files (kernel, initrd)
 - On-demand ISO download with caching
 - Machine CRD for MAC-to-hostname mapping
-- Deploy CRD for installation state (Pending/InProgress/Complete)
-- iPXE conditional boot based on Deploy status
+- Provision CRD for installation state (Pending/InProgress/Complete)
+- iPXE conditional boot based on Provision status
 - Firmware merging for non-free drivers
 
 ---
@@ -46,15 +46,15 @@
 
 ### Features
 - Preseed template with variables (hostname, domain, root password, etc.)
-- Per-machine preseed configuration via Deploy CRD
+- Per-machine preseed configuration via Provision CRD
 - Late command support for post-install customization
-- Completion callback to mark Deploy as Complete
+- Completion callback to mark Provision as Complete
 - Partitioning presets (single disk, LVM, etc.)
 
-### Deploy CRD Extension
+### Provision CRD Extension
 ```yaml
 apiVersion: isoboot.io/v1alpha1
-kind: Deploy
+kind: Provision
 spec:
   machineRef: vm03
   bootTargetRef: debian-13-with-firmware
@@ -155,7 +155,7 @@ spec:
 
 ## Future Ideas (Post 1.0)
 
-- Web UI for managing machines and deploys
+- Web UI for managing machines and provisions
 - PXE boot logging and metrics
 - Integration with external IPAM
 - Cloud-init support for cloud images
