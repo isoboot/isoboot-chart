@@ -51,9 +51,3 @@ resources:
   requests:
     memory: "64Mi"
     cpu: "100m"
-
-# Boot targets
-targets:
-  debian-13:
-    iso: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/mini.iso"
-    firmware: "https://cdimage.debian.org/cdimage/firmware/trixie/current/firmware.cpio.gz"
