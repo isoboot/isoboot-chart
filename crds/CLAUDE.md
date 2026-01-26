@@ -1,0 +1,83 @@
+# crds/CLAUDE.md
+
+Custom Resource Definitions for isoboot.
+
+## Resources
+
+### Machine
+Represents a physical/virtual machine identified by MAC address.
+```yaml
+apiVersion: isoboot.io/v1alpha1
+kind: Machine
+metadata:
+  name: vm-01.lan
+spec:
+  mac: "aa:bb:cc:dd:ee:ff"
+```
+
+### DiskImage
+Downloads and caches ISO images with checksum verification.
+```yaml
+apiVersion: isoboot.io/v1alpha1
+kind: DiskImage
+metadata:
+  name: debian-13
+spec:
+  iso: "https://..."
+  firmware: "https://..."  # optional
+```
+Status phases: Pending → Verifying → Downloading → Complete/Failed
+
+### BootTarget
+Defines how to boot a specific OS/configuration.
+```yaml
+apiVersion: isoboot.io/v1alpha1
+kind: BootTarget
+metadata:
+  name: debian-13-no-firmware
+spec:
+  diskImageRef: debian-13
+  includeFirmwarePath: ""  # or "/initrd.gz" to merge firmware
+  template: |
+    #!ipxe
+    ...
+```
+
+### Deploy
+Triggers installation of a Machine using a BootTarget.
+```yaml
+apiVersion: isoboot.io/v1alpha1
+kind: Deploy
+metadata:
+  name: vm-01-debian-13
+spec:
+  machineRef: vm-01.lan
+  bootTargetRef: debian-13-no-firmware
+  responseTemplateRef: debian-standard
+  configMaps:
+    - config-01
+  secrets:
+    - secret-01
+```
+Status phases: Pending → InProgress → Completed/Failed/ConfigError
+
+### ResponseTemplate
+Templates for answer files (preseed, kickstart, etc.).
+```yaml
+apiVersion: isoboot.io/v1alpha1
+kind: ResponseTemplate
+metadata:
+  name: debian-standard
+spec:
+  files:
+    preseed.cfg: |
+      d-i netcfg/get_hostname string {{ .Hostname }}
+      ...
+```
+
+## Naming Conventions
+
+- Machine: FQDN format (`vm-01.lan`)
+- DiskImage: OS identifier (`debian-13`)
+- BootTarget: OS + variant (`debian-13-no-firmware`, `debian-13-with-firmware`)
+- Deploy: Machine + BootTarget (`vm-01-debian-13-no-firmware`)
