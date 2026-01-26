@@ -81,8 +81,23 @@ Create separate BootTargets for different boot configurations sharing the same D
 
 BootTarget fields:
 - `diskImageRef` (required): Reference to DiskImage resource (e.g., `debian-13`)
-- `includeFirmwarePath` (optional): Path that triggers firmware merging
+- `includeFirmwarePath` (optional): Path that triggers firmware merging (see below)
 - `template`: iPXE boot template (use `.Files.Get` for clean syntax)
+
+### Firmware Merging
+
+When `includeFirmwarePath` is set (e.g., `/initrd.gz`), the HTTP server merges firmware with the requested file:
+
+1. Client requests `/iso/content/debian-13-with-firmware/mini.iso/initrd.gz`
+2. Server checks if request path matches `includeFirmwarePath`
+3. If match, serves: `initrd.gz` + `firmware.cpio.gz` concatenated
+4. If no match, serves the file as-is
+
+This follows the Debian netboot firmware method: `cat initrd.gz firmware.cpio.gz > combined.gz`
+
+The path must match exactly (with leading `/`). Examples:
+- `includeFirmwarePath: /initrd.gz` - merges firmware when `/initrd.gz` is requested
+- `includeFirmwarePath: ""` (or omitted) - no firmware merging, serves files as-is
 
 Templates should use `{{ .BootTarget }}` for dynamic paths so the same template works for multiple BootTargets:
 ```
