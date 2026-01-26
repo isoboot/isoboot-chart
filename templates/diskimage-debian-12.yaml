@@ -1,0 +1,9 @@
+apiVersion: isoboot.io/v1alpha1
+kind: DiskImage
+metadata:
+  name: debian-12
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+spec:
+  iso: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/mini.iso"
+  firmware: "https://cdimage.debian.org/cdimage/firmware/bookworm/current/firmware.cpio.gz"
