@@ -74,6 +74,21 @@ spec:
 kernel http://{{ .Host }}:{{ .Port }}/iso/content/...
 ```
 
+### BootTarget Naming Convention
+Create separate BootTargets for different boot configurations sharing the same DiskImage:
+- `debian-13-with-firmware` - includes `includeFirmwarePath: /initrd.gz` for firmware merging
+- `debian-13-no-firmware` - plain boot without firmware
+
+BootTarget fields:
+- `diskImageRef` (required): Reference to DiskImage resource (e.g., `debian-13`)
+- `includeFirmwarePath` (optional): Path that triggers firmware merging
+- `template`: iPXE boot template (use `.Files.Get` for clean syntax)
+
+Templates should use `{{ .BootTarget }}` for dynamic paths so the same template works for multiple BootTargets:
+```
+kernel http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/linux
+```
+
 ### CRD Validation
 Use OpenAPI validation in CRDs:
 - `minLength: 1` for required string fields
