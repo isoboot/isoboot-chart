@@ -54,6 +54,9 @@ resources:
 
 # Boot targets
 targets:
+  debian-12:
+    iso: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/mini.iso"
+    firmware: "https://cdimage.debian.org/cdimage/firmware/bookworm/current/firmware.cpio.gz"
   debian-13:
     iso: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/mini.iso"
     firmware: "https://cdimage.debian.org/cdimage/firmware/trixie/current/firmware.cpio.gz"
