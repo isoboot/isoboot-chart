@@ -12,6 +12,10 @@ Features:
 - Auto-detects subnet from the specified interface
 - Supports both BIOS (undionly.kpxe) and UEFI (ipxe.efi) PXE clients
 
+## Motivation
+- I like tinkerbell.org but, I didn't want to use a cloud image.
+- I like MAAS but, my machine did not have BMC.
+
 ## Prerequisites
 
 - Kubernetes cluster
