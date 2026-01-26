@@ -23,6 +23,9 @@ spec:
                 diskImageRef:
                   type: string
                   description: Reference to DiskImage resource
+                includeFirmwarePath:
+                  type: string
+                  description: Path to the file that should be merged with firmware (e.g., /initrd.gz). When a request matches this path, the HTTP server concatenates the file with firmware.cpio.gz before serving.
                 template:
                   type: string
                   description: iPXE boot template content

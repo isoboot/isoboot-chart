@@ -1,0 +1,10 @@
+apiVersion: isoboot.io/v1alpha1
+kind: BootTarget
+metadata:
+  name: debian-13-no-firmware
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+spec:
+  diskImageRef: debian-13
+  template: |
+{{ .Files.Get "files/boottarget-debian-13.tpl" | indent 4 }}
