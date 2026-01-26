@@ -43,11 +43,11 @@ spec:
     ...
 ```
 
-### Deploy
+### Provision
 Triggers installation of a Machine using a BootTarget.
 ```yaml
 apiVersion: isoboot.io/v1alpha1
-kind: Deploy
+kind: Provision
 metadata:
   name: vm-01-debian-13
 spec:
@@ -59,7 +59,7 @@ spec:
   secrets:
     - secret-01
 ```
-Status phases: Pending → InProgress → Completed/Failed/ConfigError
+Status phases: Pending → InProgress → Complete/Failed/ConfigError
 
 ### ResponseTemplate
 Templates for answer files (preseed, kickstart, etc.).
@@ -80,4 +80,4 @@ spec:
 - Machine: FQDN format (`vm-01.lan`)
 - DiskImage: OS identifier (`debian-13`)
 - BootTarget: OS + variant (`debian-13-no-firmware`, `debian-13-with-firmware`)
-- Deploy: Machine + BootTarget (`vm-01-debian-13-no-firmware`)
+- Provision: Machine + BootTarget (`vm-01-debian-13-no-firmware`)

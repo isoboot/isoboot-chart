@@ -6,7 +6,7 @@ Helm chart for isoboot - PXE boot infrastructure on Kubernetes.
 
 This repo works alongside `isoboot` (Go code for controller and HTTP server). Together they provide:
 - **dnsmasq**: Proxy DHCP for PXE boot (this chart)
-- **isoboot-controller**: Watches Deploy CRs, manages boot workflows (Go repo)
+- **isoboot-controller**: Watches Provision CRs, manages boot workflows (Go repo)
 - **isoboot-http**: Serves iPXE scripts, ISO content, answer files (Go repo)
 
 ## Git Conventions
@@ -39,7 +39,7 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 ```
 crds/                 # Custom Resource Definitions
 ├── machine.yaml
-├── deploy.yaml
+├── provision.yaml
 ├── boottarget.yaml
 ├── diskimage.yaml
 └── responsetemplate.yaml
@@ -52,7 +52,7 @@ templates/            # Kubernetes resources
 ├── boottarget-*.yaml
 └── ...
 files/                # Template files loaded via .Files.Get
-└── boottarget-debian-13.tpl
+└── boottarget-debian-v1.tpl
 values.yaml
 Chart.yaml
 ```
@@ -123,10 +123,10 @@ Use OpenAPI validation in CRDs:
 - `minProperties: 1` for required map fields
 - `x-kubernetes-validations` for CEL rules (pattern matching, etc.)
 
-### Deploy Status Phases
+### Provision Status Phases
 - `Pending` - Waiting for machine to PXE boot
 - `InProgress` - Boot started, installation running
-- `Completed` - Installation finished successfully
+- `Complete` - Installation finished successfully
 - `Failed` - Installation failed
 - `ConfigError` - Missing referenced resources (self-heals when created)
 
@@ -178,15 +178,15 @@ This approach:
 helm install isoboot . --set interface=br1
 
 # Check logs
-kubectl logs -f deployment/isoboot-isoboot-chart-controller
-kubectl logs -f deployment/isoboot-isoboot-chart-http
+kubectl logs -f deployment/isoboot-controller
+kubectl logs -f deployment/isoboot-http
 
 # Upgrade (deployments auto-restart)
 helm upgrade isoboot . --set interface=br1
 
 # Restart a deployment to pick up new code
-kubectl rollout restart deployment/isoboot-isoboot-chart-controller
-kubectl rollout restart deployment/isoboot-isoboot-chart-http
+kubectl rollout restart deployment/isoboot-controller
+kubectl rollout restart deployment/isoboot-http
 
 # Reinstall dnsmasq pod (still a pod, not deployment)
 helm uninstall isoboot && helm install isoboot . --set interface=br1

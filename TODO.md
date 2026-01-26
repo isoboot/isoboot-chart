@@ -2,11 +2,17 @@
 
 ## Debian Preseed Enhancements
 
-- [x] **Add callback to mark deploy as complete**
+- [x] **Add callback to mark provision as complete**
   - Endpoint: `GET /boot/done?id={machineName}`
   - Preseed: `d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }} || true`
 
-- [ ] **Configure Debian as console-only with SSH**
+- [ ] **Track completion source IP in Provision status**
+  - Capture source IP when `/boot/done` is called
+  - Store in Provision status and display as kubectl column
+  - Show `-` when status is not Complete, actual IP when Complete
+  - Helps verify completing machine matches expectations
+
+- [x] **Configure Debian as console-only with SSH**
   - Preseed to install minimal system without desktop
   - `tasksel tasksel/first multiselect standard, ssh-server`
 
@@ -25,4 +31,4 @@
 - [ ] **Add support for Ubuntu reporting endpoint**
   - Ubuntu autoinstall can POST progress updates to webhook
   - Implement endpoint in isoboot-http to receive reports
-  - Update Deploy status based on installation progress
+  - Update Provision status based on installation progress
