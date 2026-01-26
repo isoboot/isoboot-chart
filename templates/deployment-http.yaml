@@ -49,8 +49,7 @@ spec:
                 --port="${HTTP_PORT}" \
                 --controller="${CONTROLLER_ADDR}" \
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
-                --iso-path="/opt/isoboot/iso" \
-                --config="/etc/isoboot/config.yaml"
+                --iso-path="/opt/isoboot/iso"
           env:
             - name: GOCACHE
               value: /go/cache
@@ -61,8 +60,6 @@ spec:
           volumeMounts:
             - name: iso-storage
               mountPath: /opt/isoboot/iso
-            - name: config
-              mountPath: /etc/isoboot
             - name: go-cache
               mountPath: /go
           resources:
@@ -84,9 +81,6 @@ spec:
           hostPath:
             path: /opt/isoboot/iso
             type: DirectoryOrCreate
-        - name: config
-          configMap:
-            name: {{ include "isoboot.fullname" . }}-config
         - name: go-cache
           hostPath:
             path: /var/cache/isoboot/go/http
