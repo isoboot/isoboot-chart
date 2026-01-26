@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-26
+
+### Added
+- DiskImage CRD for managing ISO downloads with checksum verification
+- BootTarget CRD for defining boot configurations per disk image
+- ResponseTemplate CRD for dynamic response file generation
+- `includeFirmwarePath` field in BootTarget for firmware merging
+- Separate BootTargets for debian-13 (with and without firmware)
+- ISO storage volume mounted to controller for DiskImage downloads
+- Squid proxy cache for boot file downloads
+
+### Changed
+- Renamed `target` to `bootTargetRef` in Deploy CRD
+- Converted controller and HTTP from Pods to Deployments (auto-restart)
+- Reduced squid shutdown wait time to 5 seconds
+
+### Fixed
+- Checksum verification now uses exact relative path matching
+- Basename fallback for checksum files with only base filenames
+- SHA256SUMS with multiple same-named files (e.g., netboot/mini.iso vs netboot/gtk/mini.iso)
+
+### Tested With
+- Debian 13 (trixie) netboot with SHA256 verification
+- Firmware merging with firmware.cpio.gz
+
 ## [0.3.0] - 2026-01-24
 
 ### Added
