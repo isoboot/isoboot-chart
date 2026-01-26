@@ -7,4 +7,4 @@ metadata:
 spec:
   diskImageRef: debian-13
   template: |
-{{ .Files.Get "files/boottarget-debian-13.tpl" | indent 4 }}
+{{ .Files.Get "files/boottarget-debian-v1.tpl" | indent 4 }}
