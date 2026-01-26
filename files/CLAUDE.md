@@ -6,6 +6,8 @@ iPXE boot templates for BootTarget resources.
 
 `boottarget-{name}.tpl` - Template loaded by `templates/boottarget-{name}.yaml`
 
+Example: `boottarget-debian-13.tpl` is loaded by `templates/boottarget-debian-13.yaml`.
+
 ## Template Variables
 
 - `{{ .Host }}` - HTTP server IP
