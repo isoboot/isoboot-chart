@@ -2,9 +2,9 @@
 
 ## Debian Preseed Enhancements
 
-- [ ] **Add callback to mark deploy as complete**
-  - Add `preseed/late_command` to call `POST /api/deploy/{machineName}/complete`
-  - Marks Deploy status as Completed when installation finishes
+- [x] **Add callback to mark deploy as complete**
+  - Endpoint: `GET /boot/done?id={machineName}`
+  - Preseed: `d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }} || true`
 
 - [ ] **Configure Debian as console-only with SSH**
   - Preseed to install minimal system without desktop
