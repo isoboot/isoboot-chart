@@ -39,7 +39,7 @@ spec:
         - name: MAC
           type: string
           jsonPath: .spec.mac
-        - name: MachineId
+        - name: Machine ID
           type: string
           jsonPath: .spec.machineId
           priority: 1
