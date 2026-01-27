@@ -83,3 +83,31 @@ spec:
     - config-01
 EOF
 ```
+
+5. Take a look at the deployment.
+```
+$ kubectl -n isoboot get provision
+NAME                    MACHINE         BOOTTARGET              STATUS    IP    AGE
+vm-deb-12-no-firmware   vm-deb-12.lan   debian-12-no-firmware   Pending         9s
+```
+
+6. Reboot the target machine
+
+7. Shortly after it boots, the `STATUS` column will be updated from `Pending` to `InProgress`.
+```
+$ kubectl get provision -n isoboot
+NAME                    MACHINE         BOOTTARGET              STATUS       IP    AGE
+vm-deb-12-no-firmware   vm-deb-12.lan   debian-12-no-firmware   InProgress         2m38s
+```
+
+8. Finally, the `STATUS` column will be updated from `InProgress` to `Complete`. The `IP` address will be shown.
+```
+$ kubectl get provision -n isoboot
+NAME                    MACHINE         BOOTTARGET              STATUS     IP               AGE
+vm-deb-12-no-firmware   vm-deb-12.lan   debian-12-no-firmware   Complete   192.168.88.192   5m35s
+```
+
+9. You can remotely connect via SSH using the credentials you configured for this Debian installation (for example, the `isoboot` user created during setup).
+```
+ssh isoboot@192.168.88.192
+```
