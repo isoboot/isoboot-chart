@@ -40,7 +40,7 @@ spec:
         wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }} && \
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
-        in-target touch 700 /home/{{ .username }}/.ssh/authorized_keys && \
+        in-target touch /home/{{ .username }}/.ssh/authorized_keys && \
         echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
         in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
         in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh
