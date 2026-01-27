@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-01-27
+
+### Added
+- IP tracking in Provision status - captures source IP when `/boot/done` is called
+- IP column in `kubectl get provision` output
+- Completion callback endpoint (`/boot/done?id={hostname}`)
+- Console-only Debian installation with SSH server
+
+### Changed
+- Renamed Deploy CRD to Provision (avoid confusion with Kubernetes Deployment)
+- Simplified pod names: `isoboot-controller` instead of `isoboot-isoboot-chart-controller`
+- Updated RBAC rules for `provisions` resource
+
+### Technical Details
+- Provision status now includes `ip` field populated on completion
+- Proto updated with `ip` field in `MarkBootCompletedRequest`
+- Uses `net.SplitHostPort()` for IPv6-compatible IP extraction
+
+### Tested With
+- Debian 13 (trixie) automated installation via preseed
+- QEMU VM with UEFI PXE boot on Raspberry Pi 5 cluster
+- IP tracking verified in kubectl output
+
 ## [0.4.0] - 2026-01-26
 
 ### Added
