@@ -9,7 +9,7 @@ http:
   resources:
     limits:
       memory: "2Gi"
-      cpu: "2000m"
+      cpu: "500m"
     requests:
       memory: "512Mi"
       cpu: "500m"
@@ -20,7 +20,7 @@ controller:
   resources:
     limits:
       memory: "2Gi"
-      cpu: "2000m"
+      cpu: "500m"
     requests:
       memory: "512Mi"
       cpu: "500m"
