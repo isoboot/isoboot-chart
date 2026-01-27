@@ -15,10 +15,11 @@
   - Preseed to install minimal system without desktop
   - `tasksel tasksel/first multiselect standard, ssh-server`
 
-- [ ] **Support SSH authorized_keys per user**
+- [x] **Support SSH authorized_keys per user**
   - Store SSH public keys in ConfigMap/Secret
   - Inject via late_command to `~/.ssh/authorized_keys`
   - Set correct permissions (700 for .ssh, 600 for authorized_keys)
+  - See `examples/02-basic-debian-13-with-public-ssh-key.md`
 
 - [ ] **Support injecting existing SSH host keys**
   - Store host keys in Secret
