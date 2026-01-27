@@ -11,8 +11,8 @@ http:
       memory: "512Mi"
       cpu: "500m"
     requests:
-      memory: "512Mi"
-      cpu: "500m"
+      memory: "256Mi"
+      cpu: "250m"
 
 # Controller (manages provisions, talks to k8s API)
 controller:
@@ -22,8 +22,8 @@ controller:
       memory: "512Mi"
       cpu: "500m"
     requests:
-      memory: "512Mi"
-      cpu: "500m"
+      memory: "256Mi"
+      cpu: "250m"
 
 image:
   repository: alpine
@@ -42,7 +42,7 @@ proxy:
       cpu: "500m"
     requests:
       memory: "256Mi"
-      cpu: "100m"
+      cpu: "250m"
 
 resources:
   limits:
@@ -50,4 +50,4 @@ resources:
     cpu: "500m"
   requests:
     memory: "64Mi"
-    cpu: "100m"
+    cpu: "250m"
