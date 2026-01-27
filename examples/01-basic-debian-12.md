@@ -84,7 +84,7 @@ spec:
 EOF
 ```
 
-5. Take a look at the deployment
+5. Take a look at the deployment.
 ```
 $ kubectl -n isoboot get provision
 NAME                    MACHINE         BOOTTARGET              STATUS    IP    AGE
