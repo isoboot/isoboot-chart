@@ -6,7 +6,7 @@
   - Endpoint: `GET /boot/done?id={machineName}`
   - Preseed: `d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }} || true`
 
-- [x] **Track completion IP in Provision status**
+- [x] **Track completion source IP in Provision status**
   - Capture IP when `/boot/done` is called
   - Store in Provision status and display as kubectl column
   - Helps verify completing machine matches expectations
