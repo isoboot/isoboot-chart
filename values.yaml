@@ -8,22 +8,22 @@ http:
   commit: "9fe94cb"  # Git commit to install
   resources:
     limits:
-      memory: "2Gi"
-      cpu: "2000m"
-    requests:
       memory: "512Mi"
       cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
 
 # Controller (manages provisions, talks to k8s API)
 controller:
   commit: "9fe94cb"  # Git commit to install
   resources:
     limits:
-      memory: "2Gi"
-      cpu: "2000m"
-    requests:
       memory: "512Mi"
       cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
 
 image:
   repository: alpine
