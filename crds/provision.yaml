@@ -69,7 +69,7 @@ spec:
                   format: date-time
                 ip:
                   type: string
-                  description: IP address of the machine that called /boot/done
+                  description: IP address of the provisioned machine
       subresources:
         status: {}
       additionalPrinterColumns:
