@@ -31,7 +31,7 @@ Install the helm chart
 Please note to set the value of `INTERFACE` to a value from the `ip` command. For example `enp1s0`.
 ```
 ip -4 -br address show
-INTERFACE=???
+INTERFACE=enp1s0
 helm uninstall isoboot -n isoboot 2>/dev/null || true && \
   kubectl delete namespace isoboot --ignore-not-found=true --wait && \
   kubectl get crd -o name | grep isoboot.io | xargs -r kubectl delete --ignore-not-found=true && \
