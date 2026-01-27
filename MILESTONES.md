@@ -40,39 +40,29 @@
 
 ---
 
-## v0.5.0 - Preseed Automation (Next)
+## v0.5.0 - Preseed Automation ✅
 
-**Objective:** Fully automated Debian 13 installation with preseed.
-
-### Features
-- Preseed template with variables (hostname, domain, root password, etc.)
-- Per-machine preseed configuration via Provision CRD
-- Late command support for post-install customization
-- Completion callback to mark Provision as Complete
-- Partitioning presets (single disk, LVM, etc.)
-
-### Provision CRD Extension
-```yaml
-apiVersion: isoboot.io/v1alpha1
-kind: Provision
-spec:
-  machineRef: vm03
-  bootTargetRef: debian-13-with-firmware
-  config:
-    hostname: vm03
-    domain: local
-    timezone: America/Los_Angeles
-    locale: en_US.UTF-8
-    rootPasswordHash: "$6$..."
-    partitioning: lvm-single-disk
-    packages:
-      - openssh-server
-      - vim
-```
+- Renamed Deploy CRD to Provision (clearer naming)
+- Simplified pod names (isoboot-controller, isoboot-http)
+- Completion callback via `/boot/done` endpoint
+- IP tracking in Provision status
+- Console-only Debian installation with SSH
+- Preseed template with ResponseTemplate CRD
 
 ---
 
-## v0.6.0 - Debian 12 (Bookworm)
+## v0.6.0 - SSH & Security (Next)
+
+**Objective:** SSH key management and security hardening.
+
+### Features
+- SSH authorized_keys per user via ConfigMap/Secret
+- SSH host key injection (avoid known_hosts warnings)
+- SSH key-only authentication (disable password login)
+
+---
+
+## v0.7.0 - Debian 12 (Bookworm)
 
 **Objective:** Add Debian 12 stable support.
 
@@ -87,7 +77,7 @@ spec:
 
 ---
 
-## v0.7.0 - Ubuntu Server
+## v0.8.0 - Ubuntu Server
 
 **Objective:** Ubuntu Server support with autoinstall.
 
@@ -103,7 +93,7 @@ spec:
 
 ---
 
-## v0.8.0 - Rocky Linux
+## v0.9.0 - Rocky Linux
 
 **Objective:** Rocky Linux support with kickstart.
 
@@ -118,7 +108,7 @@ spec:
 
 ---
 
-## v0.9.0 - Alma Linux
+## v0.10.0 - Alma Linux
 
 **Objective:** Alma Linux support with kickstart.
 
