@@ -6,7 +6,7 @@ kubectl apply -n isoboot -f - <<EOF
 apiVersion: isoboot.io/v1alpha1
 kind: Machine
 metadata:
-  name: vm-deb-13.lan
+  name: vm-deb-12.lan
 spec:
   mac: "52-54-00-26-10-13"
 EOF
