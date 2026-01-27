@@ -31,10 +31,18 @@ spec:
                   type: string
                   pattern: "^([0-9A-Fa-f]{2}-){5}([0-9A-Fa-f]{2})$"
                   description: MAC address for this machine (dash-separated, e.g., aa-bb-cc-dd-ee-ff)
+                machineId:
+                  type: string
+                  pattern: "^[0-9a-f]{32}$"
+                  description: Optional systemd machine-id (32 lowercase hex characters, used for /etc/machine-id)
       additionalPrinterColumns:
         - name: MAC
           type: string
           jsonPath: .spec.mac
+        - name: Machine ID
+          type: string
+          jsonPath: .spec.machineId
+          priority: 1
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp
