@@ -67,6 +67,9 @@ spec:
                 lastUpdated:
                   type: string
                   format: date-time
+                ip:
+                  type: string
+                  description: IP address of the machine that called /boot/done
       subresources:
         status: {}
       additionalPrinterColumns:
@@ -79,6 +82,9 @@ spec:
         - name: Status
           type: string
           jsonPath: .status.phase
+        - name: IP
+          type: string
+          jsonPath: .status.ip
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp
