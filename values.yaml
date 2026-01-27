@@ -8,7 +8,7 @@ http:
   commit: "9fe94cb"  # Git commit to install
   resources:
     limits:
-      memory: "2Gi"
+      memory: "512Mi"
       cpu: "500m"
     requests:
       memory: "512Mi"
@@ -19,7 +19,7 @@ controller:
   commit: "9fe94cb"  # Git commit to install
   resources:
     limits:
-      memory: "2Gi"
+      memory: "512Mi"
       cpu: "500m"
     requests:
       memory: "512Mi"
