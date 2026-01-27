@@ -42,7 +42,7 @@ proxy:
       cpu: "500m"
     requests:
       memory: "256Mi"
-      cpu: "250m"
+      cpu: "100m"
 
 resources:
   limits:
@@ -50,4 +50,4 @@ resources:
     cpu: "500m"
   requests:
     memory: "64Mi"
-    cpu: "250m"
+    cpu: "100m"
