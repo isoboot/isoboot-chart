@@ -107,7 +107,7 @@ NAME                    MACHINE         BOOTTARGET              STATUS     IP   
 vm-deb-12-no-firmware   vm-deb-12.lan   debian-12-no-firmware   Complete   192.168.88.192   5m35s
 ```
 
-9. You can remotely connect.
+9. You can remotely connect via SSH using the credentials you configured for this Debian installation (for example, the `isoboot` user created during setup).
 ```
 ssh isoboot@192.168.88.192
 ```
