@@ -49,6 +49,10 @@ spec:
                   items:
                     type: string
                     minLength: 1
+                machineId:
+                  type: string
+                  pattern: "^[0-9a-f]{32}$"
+                  description: Optional systemd machine-id (32 lowercase hex characters, used for /etc/machine-id)
             status:
               type: object
               properties:

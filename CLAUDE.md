@@ -104,16 +104,17 @@ The path must match exactly (with leading `/`). Examples:
 Available in iPXE boot templates (files/boottarget-*.tpl):
 - `{{ .Host }}` - HTTP server host IP
 - `{{ .Port }}` - HTTP server port
-- `{{ .MachineName }}` - full machine name (e.g., "vm-01.lan") - use for answer file URLs
+- `{{ .MachineName }}` - full machine name (e.g., "vm-01.lan")
 - `{{ .Hostname }}` - first part before dot (e.g., "vm-01") - use for kernel hostname=
 - `{{ .Domain }}` - everything after first dot (e.g., "lan") - use for kernel domain=
 - `{{ .BootTarget }}` - BootTarget resource name - use for ISO content paths
+- `{{ .ProvisionName }}` - Provision resource name - use for answer file URLs
 
 Example iPXE template:
 ```
 kernel http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/linux
 initrd http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/initrd.gz
-imgargs linux hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/answer/{{ .MachineName }}/preseed.cfg
+imgargs linux hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/answer/{{ .ProvisionName }}/preseed.cfg
 boot
 ```
 

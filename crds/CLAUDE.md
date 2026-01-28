@@ -13,10 +13,8 @@ metadata:
   name: vm-01.lan
 spec:
   mac: "aa-bb-cc-dd-ee-ff"
-  machineId: "0123456789abcdef0123456789abcdef"  # optional, 32 hex chars
 ```
 - `mac` (required): MAC address, dash-separated
-- `machineId` (optional): systemd machine-id for /etc/machine-id (exactly 32 lowercase hex characters)
 
 ### DiskImage
 Downloads and caches ISO images with checksum verification.
@@ -57,11 +55,14 @@ spec:
   machineRef: vm-01.lan
   bootTargetRef: debian-13-no-firmware
   responseTemplateRef: debian-standard
+  machineId: "0123456789abcdef0123456789abcdef"  # optional, 32 hex chars
   configMaps:
     - config-01
   secrets:
     - secret-01
 ```
+- `machineId` (optional): systemd machine-id for /etc/machine-id (exactly 32 lowercase hex characters)
+
 Status phases: Pending → InProgress → Complete/Failed/ConfigError
 
 ### ResponseTemplate
