@@ -47,6 +47,7 @@ spec:
               exec isoboot-http \
                 --host="${HOST_IP}" \
                 --port="${HTTP_PORT}" \
+                --proxy-port="{{ .Values.proxy.port }}" \
                 --controller="${CONTROLLER_ADDR}" \
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
                 --iso-path="/opt/isoboot/iso"
