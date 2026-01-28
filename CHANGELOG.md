@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-01-27
 
+### Breaking Changes
+- **Resource naming changed**: `isoboot.fullname` no longer includes the chart name. If upgrading from a previous version:
+  - Set `fullnameOverride: <release-name>-isoboot` in values.yaml to preserve old resource names, OR
+  - Uninstall and reinstall the chart (existing resources will be orphaned)
+
 ### Added
 - IP tracking in Provision status - captures source IP when `/boot/done` is called
 - IP column in `kubectl get provision` output
