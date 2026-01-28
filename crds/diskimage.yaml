@@ -51,7 +51,7 @@ spec:
                   properties:
                     fileSizeMatch:
                       type: string
-                      enum: [pending, processing, verified, failed]
+                      enum: [pending, processing, verified, failed, not_available]
                     digestSha512:
                       type: string
                       enum: [pending, processing, verified, failed, not_found]
@@ -67,7 +67,7 @@ spec:
                   properties:
                     fileSizeMatch:
                       type: string
-                      enum: [pending, processing, verified, failed]
+                      enum: [pending, processing, verified, failed, not_available]
                     digestSha512:
                       type: string
                       enum: [pending, processing, verified, failed, not_found]
