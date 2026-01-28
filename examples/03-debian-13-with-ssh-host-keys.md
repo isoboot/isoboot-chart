@@ -134,7 +134,7 @@ spec:
         chmod 600 /target/etc/ssh/ssh_host_rsa_key && \
         chmod 644 /target/etc/ssh/ssh_host_rsa_key.pub && \
       {{- end }}
-        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }}
+        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }}
 EOF
 ```
 

@@ -37,7 +37,7 @@ spec:
       d-i partman/confirm boolean true
       d-i finish-install/reboot_in_progress note
       d-i preseed/late_command string \
-        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }} && \
+        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }} && \
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
         in-target touch /home/{{ .username }}/.ssh/authorized_keys && \
