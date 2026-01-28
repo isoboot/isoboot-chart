@@ -34,31 +34,16 @@ spec:
               echo "Installing isoboot-controller..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.controller.commit }}
 
-              HTTP_PORT="{{ .Values.http.port }}"
-
-              if [ -z "${HOST_IP:-}" ]; then
-                echo "Error: HOST_IP environment variable is not set or empty." >&2
-                exit 1
-              fi
-
-              echo "Using host IP: ${HOST_IP}"
-
               echo "Starting isoboot-controller on :8081..."
               exec isoboot-controller \
                 --port="8081" \
                 --namespace="{{ .Release.Namespace }}" \
-                --iso-path="/opt/isoboot/iso" \
-                --http-host="${HOST_IP}" \
-                --http-port="${HTTP_PORT}"
+                --iso-path="/opt/isoboot/iso"
           env:
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
             - name: GOCACHE
               value: /go/cache
           ports:
