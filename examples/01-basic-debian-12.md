@@ -36,7 +36,7 @@ spec:
       d-i partman/confirm_nooverwrite boolean true
       d-i partman/confirm boolean true
       d-i finish-install/reboot_in_progress note
-      d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?id={{ .Hostname }}
+      d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }}
 EOF
 ```
 
