@@ -107,34 +107,35 @@ spec:
       d-i partman/confirm boolean true
       d-i finish-install/reboot_in_progress note
       d-i preseed/late_command string \
-        echo "Processing SSH public key..." && \
-      {{- if .sshPublicKey }}
+        echo "Processing SSH public key..." >> /target/root/late_command.log && \
+      {{- if and (hasKey . "sshPublicKey") (hasKey . "username") }}
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
         echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
         in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
         in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
       {{- end }}
-        echo "Processing SSH host keys..." && \
-      {{- if .ssh_host_ed25519_key }}
+        echo "Processing SSH host keys..." >> /target/root/late_command.log && \
+      {{- if and (hasKey . "ssh_host_ed25519_key") (hasKey . "ssh_host_ed25519_key_pub") }}
         echo '{{ .ssh_host_ed25519_key | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_ed25519_key && \
         echo '{{ .ssh_host_ed25519_key_pub | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_ed25519_key.pub && \
         chmod 600 /target/etc/ssh/ssh_host_ed25519_key && \
         chmod 644 /target/etc/ssh/ssh_host_ed25519_key.pub && \
       {{- end }}
-      {{- if .ssh_host_ecdsa_key }}
+      {{- if and (hasKey . "ssh_host_ecdsa_key") (hasKey . "ssh_host_ecdsa_key_pub") }}
         echo '{{ .ssh_host_ecdsa_key | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_ecdsa_key && \
         echo '{{ .ssh_host_ecdsa_key_pub | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_ecdsa_key.pub && \
         chmod 600 /target/etc/ssh/ssh_host_ecdsa_key && \
         chmod 644 /target/etc/ssh/ssh_host_ecdsa_key.pub && \
       {{- end }}
-      {{- if .ssh_host_rsa_key }}
+      {{- if and (hasKey . "ssh_host_rsa_key") (hasKey . "ssh_host_rsa_key_pub") }}
         echo '{{ .ssh_host_rsa_key | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_rsa_key && \
         echo '{{ .ssh_host_rsa_key_pub | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_rsa_key.pub && \
         chmod 600 /target/etc/ssh/ssh_host_rsa_key && \
         chmod 644 /target/etc/ssh/ssh_host_rsa_key.pub && \
       {{- end }}
-        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }}
+        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }} && \
+        echo "Done." >> /target/root/late_command.log
 EOF
 ```
 

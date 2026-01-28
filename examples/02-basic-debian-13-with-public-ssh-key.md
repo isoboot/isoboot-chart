@@ -37,13 +37,16 @@ spec:
       d-i partman/confirm boolean true
       d-i finish-install/reboot_in_progress note
       d-i preseed/late_command string \
-        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }} && \
+        echo "Processing SSH public key..." >> /target/root/late_command.log && \
+      {{- if and (hasKey . "sshPublicKey") (hasKey . "username") }}
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
-        in-target touch /home/{{ .username }}/.ssh/authorized_keys && \
         echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
         in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
-        in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh
+        in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
+      {{- end }}
+        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }} && \
+        echo "Done." >> /target/root/late_command.log
 EOF
 ```
 
