@@ -38,7 +38,7 @@ spec:
       d-i finish-install/reboot_in_progress note
       d-i preseed/late_command string \
         echo "Processing SSH public key..." >> /target/root/late_command.log && \
-      {{- if and (hasKey . "sshPublicKey") (hasKey . "username") }}
+      {{- if and (hasKey . "sshPublicKey") .sshPublicKey (hasKey . "username") .username }}
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
         echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
