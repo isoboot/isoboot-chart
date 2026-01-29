@@ -47,10 +47,13 @@ and merges firmware into initrd when `includeFirmwarePath` is set on the BootTar
 
 ## 2. Boot Endpoints
 
-### 2.1 iPXE Boot Script
+### 2.1 Health Check
+- [x] /healthz returns HTTP 200
+
+### 2.2 iPXE Boot Script
 - [x] boot.ipxe returns HTTP 200 with #!ipxe and conditional-boot chain URL
 
-### 2.2 Conditional Boot Lifecycle
+### 2.3 Conditional Boot Lifecycle
 - [x] Returns 404 when no Provision exists
 - [x] Returns 200 with debian-13-no-firmware after creating Provision
 - [x] Returns 404 after /boot/done marks Provision Complete
