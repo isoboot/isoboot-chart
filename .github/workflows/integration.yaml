@@ -38,6 +38,20 @@ jobs:
           cd /tmp/isoboot-cache && tar cf - . \
             | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
 
+      - name: Restore Debian 12 netboot cache
+        id: deb12-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/deb12-netboot
+          key: deb12-netboot-v1-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
+
+      - name: Load Debian 12 netboot into kind node
+        if: steps.deb12-cache-restore.outputs.cache-hit == 'true'
+        run: |
+          docker exec kind-control-plane mkdir -p /opt/isoboot/iso/debian-12
+          cd /tmp/deb12-netboot && tar cf - . \
+            | docker exec -i kind-control-plane tar xf - -C /opt/isoboot/iso/debian-12
+
       - name: Detect network interface
         run: |
           INTERFACE=$(docker exec kind-control-plane \
@@ -101,11 +115,34 @@ jobs:
           fi
 
       - name: Save cache
-        if: always()
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v4-${{ hashFiles('values.yaml') }}
+
+      - name: Save Debian 12 netboot from kind node
+        if: always() && steps.deb12-cache-restore.outputs.cache-hit != 'true'
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping"
+            exit 0
+          fi
+          if docker exec kind-control-plane test -f /opt/isoboot/iso/debian-12/mini.iso; then
+            sudo rm -rf /tmp/deb12-netboot
+            mkdir -p /tmp/deb12-netboot
+            docker exec kind-control-plane tar cf - -C /opt/isoboot/iso/debian-12 . \
+              | tar xf - -C /tmp/deb12-netboot
+          else
+            echo "mini.iso not found, skipping"
+          fi
+
+      - name: Save Debian 12 netboot cache
+        if: always() && steps.deb12-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/deb12-netboot
+          key: deb12-netboot-v1-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
 
       - name: Show logs on failure
         if: failure()
