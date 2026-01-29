@@ -27,7 +27,18 @@ run_test() {
   fi
 }
 
-# --- Test 1: boot.ipxe returns valid iPXE script ---
+# --- Test 1: healthz returns 200 ---
+
+test_healthz() {
+  local code
+  code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE_URL}/healthz")
+  if [ "$code" != "200" ]; then
+    echo -n "(expected 200, got ${code}) "
+    return 1
+  fi
+}
+
+# --- Test 2: boot.ipxe returns valid iPXE script ---
 
 test_boot_ipxe() {
   local body code
@@ -47,7 +58,7 @@ test_boot_ipxe() {
   fi
 }
 
-# --- Test 2: conditional-boot 404 with no provision ---
+# --- Test 3: conditional-boot 404 with no provision ---
 
 test_conditional_boot_no_provision() {
   local code
@@ -59,7 +70,7 @@ test_conditional_boot_no_provision() {
   fi
 }
 
-# --- Test 3: conditional-boot 200 with debian-13-no-firmware ---
+# --- Test 4: conditional-boot 200 with debian-13-no-firmware ---
 
 test_conditional_boot_debian13() {
   # Create a Provision for debian-13-no-firmware
@@ -93,7 +104,7 @@ EOF
   fi
 }
 
-# --- Test 4: conditional-boot 404 after done ---
+# --- Test 5: conditional-boot 404 after done ---
 
 test_conditional_boot_after_done() {
   # Mark the provision as complete via /boot/done
@@ -119,7 +130,7 @@ test_conditional_boot_after_done() {
   fi
 }
 
-# --- Test 5: conditional-boot 200 with debian-12-with-firmware ---
+# --- Test 6: conditional-boot 200 with debian-12-with-firmware ---
 
 test_conditional_boot_debian12() {
   # Create a second Provision for debian-12-with-firmware
@@ -155,6 +166,7 @@ EOF
 
 # --- Run tests ---
 
+run_test "healthz returns 200" test_healthz
 run_test "boot.ipxe returns valid iPXE script" test_boot_ipxe
 run_test "conditional-boot 404 with no provision" test_conditional_boot_no_provision
 run_test "conditional-boot 200 with debian-13-no-firmware" test_conditional_boot_debian13
