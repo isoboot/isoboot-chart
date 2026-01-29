@@ -130,9 +130,14 @@ jobs:
           docker exec kind-control-plane apt-get update -qq
           docker exec -e DEBIAN_FRONTEND=noninteractive kind-control-plane \
             apt-get install -y -qq libarchive-tools
-          docker exec kind-control-plane bsdtar -xf "$ISO_PATH" -C /tmp linux initrd.gz
-          docker cp kind-control-plane:/tmp/linux /tmp/iso-linux
-          docker cp kind-control-plane:/tmp/initrd.gz /tmp/iso-initrd.gz
+          docker exec kind-control-plane mkdir -p /tmp/iso-extract
+          docker exec kind-control-plane bsdtar -xf "$ISO_PATH" -C /tmp/iso-extract
+          echo "ISO contents:"
+          docker exec kind-control-plane find /tmp/iso-extract -type f
+          docker cp kind-control-plane:/tmp/iso-extract/linux /tmp/iso-linux \
+            || docker cp kind-control-plane:/tmp/iso-extract/./linux /tmp/iso-linux
+          docker cp kind-control-plane:/tmp/iso-extract/initrd.gz /tmp/iso-initrd.gz \
+            || docker cp kind-control-plane:/tmp/iso-extract/./initrd.gz /tmp/iso-initrd.gz
           sha256sum /tmp/iso-linux /tmp/iso-initrd.gz
 
       - name: Compare kernel and initrd integrity
