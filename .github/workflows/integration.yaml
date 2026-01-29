@@ -34,6 +34,7 @@ jobs:
       - name: Load cache into kind node
         if: steps.cache-restore.outputs.cache-hit != ''
         run: |
+          docker exec kind-control-plane mkdir -p /var/cache/isoboot
           cd /tmp/isoboot-cache && tar cf - . \
             | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot
 
@@ -71,10 +72,14 @@ jobs:
       - name: Save cache from kind node
         if: always()
         run: |
-          rm -rf /tmp/isoboot-cache
-          mkdir -p /tmp/isoboot-cache
-          docker exec kind-control-plane tar cf - -C /var/cache/isoboot . \
-            | tar xf - -C /tmp/isoboot-cache
+          if docker exec kind-control-plane test -d /var/cache/isoboot; then
+            rm -rf /tmp/isoboot-cache
+            mkdir -p /tmp/isoboot-cache
+            docker exec kind-control-plane tar cf - -C /var/cache/isoboot . \
+              | tar xf - -C /tmp/isoboot-cache
+          else
+            echo "/var/cache/isoboot does not exist in kind node, skipping"
+          fi
 
       - name: Save cache
         if: always()
