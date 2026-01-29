@@ -1,0 +1,16 @@
+apiVersion: isoboot.io/v1alpha1
+kind: Machine
+metadata:
+  name: test-boot.lab
+  namespace: isoboot
+spec:
+  mac: "00-00-00-00-00-01"
+---
+apiVersion: isoboot.io/v1alpha1
+kind: ResponseTemplate
+metadata:
+  name: test-boot-rt
+  namespace: isoboot
+spec:
+  files:
+    preseed.cfg: "# test"

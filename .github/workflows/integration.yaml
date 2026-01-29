@@ -93,6 +93,12 @@ jobs:
             diskimage/debian-12 diskimage/debian-13 \
             -n isoboot --timeout=600s
 
+      - name: Apply boot test fixtures
+        run: kubectl apply -f ./tests/integration/boot/fixtures.yaml
+
+      - name: Apply e2e test fixtures
+        run: kubectl apply -f ./tests/integration/e2e/fixtures.yaml
+
       - name: Get host IP
         run: |
           HOST_IP=$(docker exec kind-control-plane \
@@ -107,6 +113,12 @@ jobs:
 
       - name: Test ISO content serving
         run: ./tests/integration/iso-content/run.sh "$HOST_IP"
+
+      - name: Test boot endpoints
+        run: ./tests/integration/boot/test.sh "$HOST_IP"
+
+      - name: Test e2e provisioning flow
+        run: ./tests/integration/e2e/test.sh "$HOST_IP"
 
       - name: Show pod status
         if: always()
