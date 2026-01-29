@@ -17,6 +17,11 @@ jobs:
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 
+      - name: Create kind cluster
+        run: |
+          kind create cluster
+          kubectl cluster-info
+
       - name: Restore cache
         id: cache-restore
         uses: actions/cache/restore@v4
@@ -26,22 +31,11 @@ jobs:
           restore-keys: |
             isoboot-cache-
 
-      - name: Prepare cache directory
+      - name: Load cache into kind node
+        if: steps.cache-restore.outputs.cache-hit != ''
         run: |
-          mkdir -p /tmp/isoboot-cache
-
-      - name: Create kind cluster
-        run: |
-          cat <<'EOF' | kind create cluster --config=-
-          kind: Cluster
-          apiVersion: kind.x-k8s.io/v1alpha4
-          nodes:
-          - role: control-plane
-            extraMounts:
-            - hostPath: /tmp/isoboot-cache
-              containerPath: /var/cache/isoboot
-          EOF
-          kubectl cluster-info
+          cd /tmp/isoboot-cache && tar cf - . \
+            | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot
 
       - name: Detect network interface
         run: |
@@ -73,6 +67,14 @@ jobs:
         if: always()
         run: |
           kubectl get pods -n isoboot -o wide
+
+      - name: Save cache from kind node
+        if: always()
+        run: |
+          rm -rf /tmp/isoboot-cache
+          mkdir -p /tmp/isoboot-cache
+          docker exec kind-control-plane tar cf - -C /var/cache/isoboot . \
+            | tar xf - -C /tmp/isoboot-cache
 
       - name: Save cache
         if: always()
