@@ -88,6 +88,10 @@ jobs:
           HOST_IP=$(docker exec kind-control-plane \
             ip -4 addr show "${{ env.INTERFACE }}" \
             | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
+          if [ -z "$HOST_IP" ]; then
+            echo "Error: Failed to determine HOST_IP for interface '${{ env.INTERFACE }}'."
+            exit 1
+          fi
           echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
           echo "Host IP: $HOST_IP"
 
@@ -119,12 +123,13 @@ jobs:
       - name: Extract kernel and initrd from ISO
         run: |
           ISO_PATH=$(docker exec kind-control-plane \
-            find /opt/isoboot/iso -name 'mini.iso' -type f | head -1)
+            find /opt/isoboot/iso/debian-12 -name 'mini.iso' -type f | head -1)
           [ -n "$ISO_PATH" ] || {
             echo "mini.iso not found"; docker exec kind-control-plane find /opt/isoboot/iso -type f; exit 1; }
           echo "ISO: $ISO_PATH"
           docker exec kind-control-plane apt-get update -qq
-          docker exec kind-control-plane apt-get install -y -qq libarchive-tools
+          docker exec -e DEBIAN_FRONTEND=noninteractive kind-control-plane \
+            apt-get install -y -qq libarchive-tools
           docker exec kind-control-plane bsdtar -xf "$ISO_PATH" -C /tmp linux initrd.gz
           docker cp kind-control-plane:/tmp/linux /tmp/iso-linux
           docker cp kind-control-plane:/tmp/initrd.gz /tmp/iso-initrd.gz
@@ -166,7 +171,7 @@ jobs:
             exit 0
           fi
           if docker exec kind-control-plane test -d /var/cache/isoboot/go; then
-            rm -rf /tmp/isoboot-cache
+            sudo rm -rf /tmp/isoboot-cache
             mkdir -p /tmp/isoboot-cache
             docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
               | tar xf - -C /tmp/isoboot-cache
