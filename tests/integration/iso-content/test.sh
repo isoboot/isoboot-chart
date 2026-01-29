@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
+  echo "Usage: $0 <HOST_IP>" >&2
+  exit 1
+fi
+
 HOST_IP=$1
 BASE_URL="http://${HOST_IP}:8080"
 FAILURES=0
@@ -105,7 +110,8 @@ test_initrd_with_firmware_differs() {
 }
 
 test_initrd_with_firmware_matches_merged() {
-  # reuse file from previous test
+  curl -f -s -o /tmp/http-initrd-wfw \
+    "${BASE_URL}/iso/content/debian-12-with-firmware/mini.iso/initrd.gz"
   local sha
   sha=$(sha256sum /tmp/http-initrd-wfw | awk '{print $1}')
   echo -n "(sha256=$sha expected=$MERGED_INITRD_SHA) "
