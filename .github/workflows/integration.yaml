@@ -120,7 +120,7 @@ jobs:
             "http://${HOST_IP}:8080/iso/content/debian-12-no-firmware/mini.iso/initrd.gz"
           sha256sum /tmp/http-linux /tmp/http-initrd.gz
 
-      - name: Extract kernel and initrd from ISO
+      - name: Extract and compare kernel and initrd integrity
         run: |
           ISO_PATH=$(docker exec kind-control-plane \
             find /opt/isoboot/iso/debian-12 -name 'mini.iso' -type f | head -1)
@@ -132,20 +132,10 @@ jobs:
             apt-get install -y -qq libarchive-tools
           docker exec kind-control-plane mkdir -p /tmp/iso-extract
           docker exec kind-control-plane bsdtar -xf "$ISO_PATH" -C /tmp/iso-extract
-          echo "ISO contents:"
-          docker exec kind-control-plane find /tmp/iso-extract -type f
-          docker cp kind-control-plane:/tmp/iso-extract/linux /tmp/iso-linux \
-            || docker cp kind-control-plane:/tmp/iso-extract/./linux /tmp/iso-linux
-          docker cp kind-control-plane:/tmp/iso-extract/initrd.gz /tmp/iso-initrd.gz \
-            || docker cp kind-control-plane:/tmp/iso-extract/./initrd.gz /tmp/iso-initrd.gz
-          sha256sum /tmp/iso-linux /tmp/iso-initrd.gz
-
-      - name: Compare kernel and initrd integrity
-        run: |
+          ISO_K=$(docker exec kind-control-plane sha256sum /tmp/iso-extract/linux | awk '{print $1}')
+          ISO_I=$(docker exec kind-control-plane sha256sum /tmp/iso-extract/initrd.gz | awk '{print $1}')
           HTTP_K=$(sha256sum /tmp/http-linux | awk '{print $1}')
-          ISO_K=$(sha256sum /tmp/iso-linux | awk '{print $1}')
           HTTP_I=$(sha256sum /tmp/http-initrd.gz | awk '{print $1}')
-          ISO_I=$(sha256sum /tmp/iso-initrd.gz | awk '{print $1}')
           echo "Kernel: HTTP=$HTTP_K ISO=$ISO_K"
           echo "Initrd: HTTP=$HTTP_I ISO=$ISO_I"
           [ "$HTTP_K" = "$ISO_K" ] || { echo "FAIL: kernel sha256 mismatch"; exit 1; }
