@@ -62,8 +62,12 @@ jobs:
       - name: Save cache from kind node
         if: always()
         run: |
-          rm -rf /tmp/isoboot-cache
-          docker cp kind-control-plane:/var/cache/isoboot /tmp/isoboot-cache
+          if docker inspect kind-control-plane >/dev/null 2>&1; then
+            rm -rf /tmp/isoboot-cache
+            docker cp kind-control-plane:/var/cache/isoboot /tmp/isoboot-cache
+          else
+            echo "kind node already removed, skipping cache save"
+          fi
 
       - name: Save cache
         if: always()
