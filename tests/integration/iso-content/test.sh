@@ -110,10 +110,10 @@ test_initrd_with_firmware_differs() {
 }
 
 test_initrd_with_firmware_matches_merged() {
-  curl -f -s -o /tmp/http-initrd-wfw \
+  curl -f -s -o /tmp/http-initrd-wfw-merged \
     "${BASE_URL}/iso/content/debian-12-with-firmware/mini.iso/initrd.gz"
   local sha
-  sha=$(sha256sum /tmp/http-initrd-wfw | awk '{print $1}')
+  sha=$(sha256sum /tmp/http-initrd-wfw-merged | awk '{print $1}')
   echo -n "(sha256=$sha expected=$MERGED_INITRD_SHA) "
   [ "$sha" = "$MERGED_INITRD_SHA" ]
 }
