@@ -52,6 +52,20 @@ jobs:
           cd /tmp/deb12-netboot && tar cf - . \
             | docker exec -i kind-control-plane tar xf - -C /opt/isoboot/iso/debian-12
 
+      - name: Restore Debian 13 netboot cache
+        id: deb13-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/deb13-netboot
+          key: deb13-netboot-v1-${{ hashFiles('templates/diskimage-debian-13.yaml') }}
+
+      - name: Load Debian 13 netboot into kind node
+        if: steps.deb13-cache-restore.outputs.cache-hit == 'true'
+        run: |
+          docker exec kind-control-plane mkdir -p /opt/isoboot/iso/debian-13
+          cd /tmp/deb13-netboot && tar cf - . \
+            | docker exec -i kind-control-plane tar xf - -C /opt/isoboot/iso/debian-13
+
       - name: Detect network interface
         run: |
           INTERFACE=$(docker exec kind-control-plane \
@@ -73,10 +87,11 @@ jobs:
           kubectl wait --for=condition=ready pod --all \
             -n isoboot --timeout=600s
 
-      - name: Wait for DiskImage debian-12
+      - name: Wait for DiskImages
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
-            diskimage/debian-12 -n isoboot --timeout=600s
+            diskimage/debian-12 diskimage/debian-13 \
+            -n isoboot --timeout=600s
 
       - name: Get host IP
         run: |
@@ -91,7 +106,7 @@ jobs:
           echo "Host IP: $HOST_IP"
 
       - name: Test ISO content serving
-        run: ./tests/integration/iso-content/test.sh "$HOST_IP"
+        run: ./tests/integration/iso-content/run.sh "$HOST_IP"
 
       - name: Show pod status
         if: always()
@@ -143,6 +158,29 @@ jobs:
         with:
           path: /tmp/deb12-netboot
           key: deb12-netboot-v2-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
+
+      - name: Save Debian 13 netboot from kind node
+        if: always() && steps.deb13-cache-restore.outputs.cache-hit != 'true'
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping"
+            exit 0
+          fi
+          if docker exec kind-control-plane test -f /opt/isoboot/iso/debian-13/mini.iso; then
+            sudo rm -rf /tmp/deb13-netboot
+            mkdir -p /tmp/deb13-netboot
+            docker exec kind-control-plane tar cf - -C /opt/isoboot/iso/debian-13 . \
+              | tar xf - -C /tmp/deb13-netboot
+          else
+            echo "mini.iso not found for debian-13, skipping"
+          fi
+
+      - name: Save Debian 13 netboot cache
+        if: always() && steps.deb13-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/deb13-netboot
+          key: deb13-netboot-v1-${{ hashFiles('templates/diskimage-debian-13.yaml') }}
 
       - name: Show logs on failure
         if: failure()
