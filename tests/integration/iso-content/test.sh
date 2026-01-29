@@ -57,8 +57,8 @@ ISO_INITRD_SHA=$(docker exec kind-control-plane sha256sum /tmp/iso-extract/initr
 MERGED_INITRD_SHA=$(docker exec kind-control-plane \
   sh -c "cat /tmp/iso-extract/initrd.gz $FW_PATH | sha256sum" | awk '{print $1}')
 
-echo "ISO kernel sha256:   $ISO_KERNEL_SHA"
-echo "ISO initrd sha256:   $ISO_INITRD_SHA"
+echo "ISO kernel sha256:    $ISO_KERNEL_SHA"
+echo "ISO initrd sha256:    $ISO_INITRD_SHA"
 echo "Merged initrd sha256: $MERGED_INITRD_SHA"
 echo ""
 
