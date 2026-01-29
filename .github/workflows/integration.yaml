@@ -59,6 +59,100 @@ jobs:
           kubectl wait --for=condition=ready pod --all \
             -n isoboot --timeout=600s
 
+      - name: Apply example01 fixtures
+        run: kubectl apply -f ./tests/integration/example01/fixtures.yaml
+
+      - name: Wait for DiskImage debian-12
+        run: |
+          kubectl wait --for=jsonpath='{.status.phase}'=Complete \
+            diskimage/debian-12 -n isoboot --timeout=600s
+
+      - name: Wait for Provision
+        run: |
+          for i in $(seq 1 60); do
+            PHASE=$(kubectl get provision vm-deb-12-no-firmware -n isoboot \
+              -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+            echo "Attempt $i/60: phase=$PHASE"
+            [ "$PHASE" = "Pending" ] && exit 0
+            if [ "$PHASE" = "ConfigError" ]; then
+              kubectl get provision vm-deb-12-no-firmware -n isoboot -o yaml
+              exit 1
+            fi
+            sleep 2
+          done
+          kubectl get provision vm-deb-12-no-firmware -n isoboot -o yaml
+          exit 1
+
+      - name: Get host IP
+        run: |
+          HOST_IP=$(docker exec kind-control-plane \
+            ip -4 addr show "${{ env.INTERFACE }}" \
+            | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
+          echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
+          echo "Host IP: $HOST_IP"
+
+      - name: Test boot script
+        run: |
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -o /tmp/actual-boot-script.ipxe -w '%{http_code}' \
+              "http://${HOST_IP}:8080/boot/conditional-boot?mac=52-54-00-26-10-13")
+            [ "$CODE" = "200" ] && break
+            echo "Attempt $i/30: HTTP $CODE"
+            sleep 2
+          done
+          [ "$CODE" = "200" ] || { echo "Boot script endpoint failed"; exit 1; }
+          cat /tmp/actual-boot-script.ipxe
+          sed "s/__HOST__/${HOST_IP}/g" \
+            ./tests/integration/example01/expected-boot-script.ipxe \
+            > /tmp/expected-boot-script.ipxe
+          diff /tmp/expected-boot-script.ipxe /tmp/actual-boot-script.ipxe
+          echo "PASS: boot script matches"
+
+      - name: Download kernel and initrd via HTTP
+        run: |
+          curl -f -s -o /tmp/http-linux \
+            "http://${HOST_IP}:8080/iso/content/debian-12-no-firmware/mini.iso/linux"
+          curl -f -s -o /tmp/http-initrd.gz \
+            "http://${HOST_IP}:8080/iso/content/debian-12-no-firmware/mini.iso/initrd.gz"
+          sha256sum /tmp/http-linux /tmp/http-initrd.gz
+
+      - name: Extract kernel and initrd from ISO
+        run: |
+          ISO_PATH=$(docker exec kind-control-plane \
+            find /opt/isoboot/iso -name 'mini.iso' -type f | head -1)
+          [ -n "$ISO_PATH" ] || {
+            echo "mini.iso not found"; docker exec kind-control-plane find /opt/isoboot/iso -type f; exit 1; }
+          echo "ISO: $ISO_PATH"
+          docker exec kind-control-plane apt-get update -qq
+          docker exec kind-control-plane apt-get install -y -qq libarchive-tools
+          docker exec kind-control-plane bsdtar -xf "$ISO_PATH" -C /tmp linux initrd.gz
+          docker cp kind-control-plane:/tmp/linux /tmp/iso-linux
+          docker cp kind-control-plane:/tmp/initrd.gz /tmp/iso-initrd.gz
+          sha256sum /tmp/iso-linux /tmp/iso-initrd.gz
+
+      - name: Compare kernel and initrd integrity
+        run: |
+          HTTP_K=$(sha256sum /tmp/http-linux | awk '{print $1}')
+          ISO_K=$(sha256sum /tmp/iso-linux | awk '{print $1}')
+          HTTP_I=$(sha256sum /tmp/http-initrd.gz | awk '{print $1}')
+          ISO_I=$(sha256sum /tmp/iso-initrd.gz | awk '{print $1}')
+          echo "Kernel: HTTP=$HTTP_K ISO=$ISO_K"
+          echo "Initrd: HTTP=$HTTP_I ISO=$ISO_I"
+          [ "$HTTP_K" = "$ISO_K" ] || { echo "FAIL: kernel sha256 mismatch"; exit 1; }
+          [ "$HTTP_I" = "$ISO_I" ] || { echo "FAIL: initrd sha256 mismatch"; exit 1; }
+          echo "PASS: kernel and initrd match ISO"
+
+      - name: Test preseed response
+        run: |
+          curl -f -s -o /tmp/actual-preseed.cfg \
+            "http://${HOST_IP}:8080/answer/vm-deb-12-no-firmware/preseed.cfg"
+          cat /tmp/actual-preseed.cfg
+          sed "s/__HOST__/${HOST_IP}/g" \
+            ./tests/integration/example01/expected-preseed.cfg \
+            > /tmp/expected-preseed.cfg
+          diff /tmp/expected-preseed.cfg /tmp/actual-preseed.cfg
+          echo "PASS: preseed matches"
+
       - name: Show pod status
         if: always()
         run: |
@@ -90,7 +184,16 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
+          echo "=== CRD Status ==="
+          kubectl get diskimage,provision,machine,boottarget,responsetemplate \
+            -n isoboot -o wide 2>/dev/null || true
+          echo ""
+          echo "=== ISO storage ==="
+          docker exec kind-control-plane \
+            find /opt/isoboot/iso -type f -ls 2>/dev/null || true
+          echo ""
+          echo "=== Pod Logs ==="
           for pod in $(kubectl get pods -n isoboot -o name); do
-            echo "=== $pod ==="
-            kubectl logs "$pod" -n isoboot --all-containers=true --tail=80 || true
+            echo "--- $pod ---"
+            kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
           done
