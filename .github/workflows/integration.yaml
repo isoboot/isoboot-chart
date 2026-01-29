@@ -1,0 +1,81 @@
+name: Integration Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+
+      - name: Restore cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/isoboot-cache
+          key: isoboot-cache-${{ hashFiles('values.yaml') }}
+          restore-keys: |
+            isoboot-cache-
+
+      - name: Load cache into kind node
+        if: steps.cache-restore.outputs.cache-hit != ''
+        run: |
+          docker cp /tmp/isoboot-cache/. kind-control-plane:/var/cache/isoboot/
+
+      - name: Detect network interface
+        run: |
+          INTERFACE=$(docker exec kind-control-plane \
+            ip -4 route list default | awk '{print $5}')
+          INTERFACE=${INTERFACE:-eth0}
+          echo "INTERFACE=$INTERFACE" >> $GITHUB_ENV
+          echo "Detected interface: $INTERFACE"
+
+      - name: Clean stale CRDs
+        run: |
+          kubectl get crd -o name | grep isoboot.io \
+            | xargs -r kubectl delete --ignore-not-found=true
+
+      - name: Install CRDs
+        run: kubectl apply -f ./crds/
+
+      - name: Helm install
+        run: |
+          helm install isoboot . -n isoboot --create-namespace \
+            --set interface=${{ env.INTERFACE }}
+
+      - name: Wait for pods
+        run: |
+          kubectl wait --for=condition=ready pod --all \
+            -n isoboot --timeout=600s
+
+      - name: Show pod status
+        if: always()
+        run: |
+          kubectl get pods -n isoboot -o wide
+
+      - name: Save cache from kind node
+        if: always()
+        run: |
+          rm -rf /tmp/isoboot-cache
+          docker cp kind-control-plane:/var/cache/isoboot /tmp/isoboot-cache
+
+      - name: Save cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/isoboot-cache
+          key: isoboot-cache-${{ hashFiles('values.yaml') }}
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          for pod in $(kubectl get pods -n isoboot -o name); do
+            echo "=== $pod ==="
+            kubectl logs "$pod" -n isoboot --tail=80 || true
+          done
