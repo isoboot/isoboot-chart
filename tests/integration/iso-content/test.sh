@@ -55,6 +55,7 @@ MERGED_INITRD_SHA=$(docker exec kind-control-plane \
   sh -c "cat ${MOUNT_DIR}/initrd.gz ${FW_PATH} | sha256sum" | awk '{print $1}')
 
 docker exec kind-control-plane umount "$MOUNT_DIR"
+docker exec kind-control-plane rmdir "$MOUNT_DIR"
 
 echo "  ISO kernel sha256:    ${ISO_KERNEL_SHA}"
 echo "  ISO initrd sha256:    ${ISO_INITRD_SHA}"

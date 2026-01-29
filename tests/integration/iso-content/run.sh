@@ -46,6 +46,8 @@ for DISKIMAGE in $DISK_IMAGES; do
   if [ -f "$results" ]; then
     read -r passed tests < "$results"
     echo "  iso-content/${DISKIMAGE}: ${passed}/${tests} passed"
+  else
+    echo "  iso-content/${DISKIMAGE}: FAILED (no results)"
   fi
 done
 echo "  iso-content: ${TOTAL_PASSED}/${TOTAL_TESTS} passed"
