@@ -11,8 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
       - name: Create kind cluster
-        uses: helm/kind-action@v1
+        run: |
+          kind create cluster
+          kubectl cluster-info
 
       - name: Restore cache
         id: cache-restore
@@ -62,12 +70,8 @@ jobs:
       - name: Save cache from kind node
         if: always()
         run: |
-          if docker inspect kind-control-plane >/dev/null 2>&1; then
-            rm -rf /tmp/isoboot-cache
-            docker cp kind-control-plane:/var/cache/isoboot /tmp/isoboot-cache
-          else
-            echo "kind node already removed, skipping cache save"
-          fi
+          rm -rf /tmp/isoboot-cache
+          docker cp kind-control-plane:/var/cache/isoboot /tmp/isoboot-cache
 
       - name: Save cache
         if: always()
