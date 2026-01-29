@@ -46,11 +46,6 @@ jobs:
           echo "INTERFACE=$INTERFACE" >> $GITHUB_ENV
           echo "Detected interface: $INTERFACE"
 
-      - name: Clean stale CRDs
-        run: |
-          kubectl get crd -o name | grep isoboot.io \
-            | xargs -r kubectl delete --ignore-not-found=true || true
-
       - name: Install CRDs
         run: kubectl apply -f ./crds/
 
@@ -72,6 +67,10 @@ jobs:
       - name: Save cache from kind node
         if: always()
         run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping cache save"
+            exit 0
+          fi
           if docker exec kind-control-plane test -d /var/cache/isoboot; then
             rm -rf /tmp/isoboot-cache
             mkdir -p /tmp/isoboot-cache
@@ -93,5 +92,5 @@ jobs:
         run: |
           for pod in $(kubectl get pods -n isoboot -o name); do
             echo "=== $pod ==="
-            kubectl logs "$pod" -n isoboot --tail=80 || true
+            kubectl logs "$pod" -n isoboot --all-containers=true --tail=80 || true
           done
