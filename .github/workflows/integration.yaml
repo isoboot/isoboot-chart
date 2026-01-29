@@ -43,7 +43,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /tmp/deb12-netboot
-          key: deb12-netboot-v1-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
+          key: deb12-netboot-v2-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
 
       - name: Load Debian 12 netboot into kind node
         if: steps.deb12-cache-restore.outputs.cache-hit == 'true'
@@ -142,7 +142,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/deb12-netboot
-          key: deb12-netboot-v1-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
+          key: deb12-netboot-v2-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
 
       - name: Show logs on failure
         if: failure()
