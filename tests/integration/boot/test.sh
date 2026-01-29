@@ -9,6 +9,8 @@ fi
 HOST_IP=$1
 BASE_URL="http://${HOST_IP}:8080"
 MAC="00-00-00-00-00-01"
+TMPDIR="/tmp/boot-test"
+mkdir -p "$TMPDIR"
 FAILURES=0
 TESTS=0
 
@@ -29,8 +31,8 @@ run_test() {
 
 test_boot_ipxe() {
   local body code
-  code=$(curl -s -o /tmp/boot-ipxe-body -w '%{http_code}' "${BASE_URL}/boot/boot.ipxe")
-  body=$(cat /tmp/boot-ipxe-body)
+  code=$(curl -s -o "${TMPDIR}/boot-ipxe-body" -w '%{http_code}' "${BASE_URL}/boot/boot.ipxe")
+  body=$(cat "${TMPDIR}/boot-ipxe-body")
   if [ "$code" != "200" ]; then
     echo -n "(HTTP ${code}) "
     return 1
@@ -78,9 +80,9 @@ EOF
     provision/test-boot-debian13 -n isoboot --timeout=30s
 
   local body code
-  code=$(curl -s -o /tmp/boot-conditional-body -w '%{http_code}' \
+  code=$(curl -s -o "${TMPDIR}/conditional-body" -w '%{http_code}' \
     "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
-  body=$(cat /tmp/boot-conditional-body)
+  body=$(cat "${TMPDIR}/conditional-body")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
     return 1
@@ -102,6 +104,10 @@ test_conditional_boot_after_done() {
     echo -n "(/boot/done returned ${done_code}, expected 200) "
     return 1
   fi
+
+  # Wait for controller to mark provision Complete before checking
+  kubectl wait --for=jsonpath='{.status.phase}'=Complete \
+    provision/test-boot-debian13 -n isoboot --timeout=10s
 
   # Now conditional-boot should 404 (no more Pending provisions)
   local code
@@ -134,9 +140,9 @@ EOF
     provision/test-boot-debian12 -n isoboot --timeout=30s
 
   local body code
-  code=$(curl -s -o /tmp/boot-conditional-body2 -w '%{http_code}' \
+  code=$(curl -s -o "${TMPDIR}/conditional-body2" -w '%{http_code}' \
     "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
-  body=$(cat /tmp/boot-conditional-body2)
+  body=$(cat "${TMPDIR}/conditional-body2")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
     return 1
