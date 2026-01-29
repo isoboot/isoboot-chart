@@ -13,6 +13,7 @@ This repo works alongside `isoboot` (Go code for controller and HTTP server). To
 
 - **Never force push** - use squash merge at PR merge time
 - PRs required for main branch
+- After merging a PR, delete the local branch (`git branch -d <branch>`). GitHub auto-deletes the remote branch on merge.
 - On publishing a PR, request a Copilot review and poll for the response:
   ```bash
   # Request review
