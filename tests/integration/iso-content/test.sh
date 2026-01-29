@@ -46,6 +46,13 @@ FW_PATH=$(docker exec kind-control-plane \
 }
 
 MOUNT_DIR="/tmp/iso-mount-${DISKIMAGE}"
+
+cleanup_iso_mount() {
+  docker exec kind-control-plane umount "$MOUNT_DIR" >/dev/null 2>&1 || true
+  docker exec kind-control-plane rmdir "$MOUNT_DIR" >/dev/null 2>&1 || true
+}
+trap cleanup_iso_mount EXIT
+
 docker exec kind-control-plane mkdir -p "$MOUNT_DIR"
 docker exec kind-control-plane mount -o ro "$ISO_PATH" "$MOUNT_DIR"
 
@@ -54,8 +61,8 @@ ISO_INITRD_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/initrd.g
 MERGED_INITRD_SHA=$(docker exec kind-control-plane \
   sh -c "cat ${MOUNT_DIR}/initrd.gz ${FW_PATH} | sha256sum" | awk '{print $1}')
 
-docker exec kind-control-plane umount "$MOUNT_DIR"
-docker exec kind-control-plane rmdir "$MOUNT_DIR"
+cleanup_iso_mount
+trap - EXIT
 
 echo "  ISO kernel sha256:    ${ISO_KERNEL_SHA}"
 echo "  ISO initrd sha256:    ${ISO_INITRD_SHA}"
