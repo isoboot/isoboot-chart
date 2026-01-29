@@ -27,9 +27,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v3-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v4-${{ hashFiles('values.yaml') }}
           restore-keys: |
-            isoboot-cache-v3-
+            isoboot-cache-v4-
 
       - name: Load cache into kind node
         if: steps.cache-restore.outputs.cache-hit == 'true'
@@ -105,7 +105,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v3-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v4-${{ hashFiles('values.yaml') }}
 
       - name: Show logs on failure
         if: failure()
