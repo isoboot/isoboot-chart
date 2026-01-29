@@ -27,16 +27,16 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v2-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v3-${{ hashFiles('values.yaml') }}
           restore-keys: |
-            isoboot-cache-v2-
+            isoboot-cache-v3-
 
       - name: Load cache into kind node
         if: steps.cache-restore.outputs.cache-hit == 'true'
         run: |
-          docker exec kind-control-plane mkdir -p /var/cache/isoboot
+          docker exec kind-control-plane mkdir -p /var/cache/isoboot/go
           cd /tmp/isoboot-cache && tar cf - . \
-            | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot
+            | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
 
       - name: Detect network interface
         run: |
@@ -71,13 +71,13 @@ jobs:
             echo "kind-control-plane container not found, skipping cache save"
             exit 0
           fi
-          if docker exec kind-control-plane test -d /var/cache/isoboot; then
+          if docker exec kind-control-plane test -d /var/cache/isoboot/go; then
             rm -rf /tmp/isoboot-cache
             mkdir -p /tmp/isoboot-cache
-            docker exec kind-control-plane tar cf - -C /var/cache/isoboot . \
+            docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
               | tar xf - -C /tmp/isoboot-cache
           else
-            echo "/var/cache/isoboot does not exist in kind node, skipping"
+            echo "/var/cache/isoboot/go does not exist in kind node, skipping"
           fi
 
       - name: Save cache
@@ -85,7 +85,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v2-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v3-${{ hashFiles('values.yaml') }}
 
       - name: Show logs on failure
         if: failure()
