@@ -13,6 +13,17 @@ This repo works alongside `isoboot` (Go code for controller and HTTP server). To
 
 - **Never force push** - use squash merge at PR merge time
 - PRs required for main branch
+- On publishing a PR, request a Copilot review and poll for the response:
+  ```bash
+  # Request review
+  gh api repos/{owner}/{repo}/pulls/{n}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
+  ```
+  Poll every 15 seconds for up to 10 minutes. If Copilot doesn't respond within 10 minutes, wait 5 minutes and re-request the review. After 3 consecutive failures, stop and inform the user.
+
+  When Copilot leaves review comments, always reply inline on the thread, then resolve it:
+  - **Addressable**: Fix in the next commit, reply inline referencing the commit, resolve the thread.
+  - **Non-issue**: Reply inline explaining why, resolve the thread.
+  - **Out of scope**: Create a GitHub issue, reply inline with "Tracked in #N", resolve the thread.
 
 ## Chart Overview
 
