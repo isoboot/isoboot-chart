@@ -5,11 +5,12 @@ metadata:
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 spec:
-  iso:
-    url: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/mini.iso"
+  kernel:
+    url: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/debian-installer/amd64/linux"
     checksumURL: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/SHA256SUMS"
-    kernel: "linux"
-    initrd: "initrd.gz"
+  initrd:
+    url: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/debian-installer/amd64/initrd.gz"
+    checksumURL: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/SHA256SUMS"
   firmware:
     url: "https://cdimage.debian.org/cdimage/firmware/bookworm/current/firmware.cpio.gz"
     checksumURL: "https://cdimage.debian.org/cdimage/firmware/bookworm/current/SHA256SUMS"
