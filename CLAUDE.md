@@ -54,6 +54,7 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 crds/                 # Custom Resource Definitions
 ├── machine.yaml
 ├── provision.yaml
+├── bootmedia.yaml
 ├── boottarget.yaml
 └── responsetemplate.yaml
 templates/            # Kubernetes resources
@@ -63,7 +64,8 @@ templates/            # Kubernetes resources
 ├── deployment-nginx.yaml       # Deployment (hostNetwork:8080, reverse proxy)
 ├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
-├── boottarget-*.yaml
+├── bootmedia-*.yaml            # BootMedia resources (file downloads)
+├── boottarget-*.yaml           # BootTarget resources (boot config)
 └── ...
 files/                # Template files loaded via .Files.Get
 └── boottarget-debian-v1.tpl
@@ -85,38 +87,30 @@ spec:
 
 ```
 # In files/boottarget-foo.tpl (clean Go template syntax)
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
 ```
 
-### BootTarget Naming Convention
-One BootTarget per OS version. Each downloads kernel, initrd, and firmware, then builds a combined `firmware-initrd.gz`:
-- `debian-12` - Debian Bookworm (kernel, initrd, firmware, firmware-initrd.gz)
-- `debian-13` - Debian Trixie (kernel, initrd, firmware, firmware-initrd.gz)
+### CRD Architecture: BootMedia + BootTarget
 
-BootTarget fields:
-- `files` (required): Array of files to download, each with `url` and optional `checksumURL`
-- `combinedFiles` (optional): Array of files built by concatenating downloaded files
-- `template` (required): iPXE boot template (use `.Files.Get` for clean syntax)
+- **BootMedia** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
+- **BootTarget** references a BootMedia via `bootMediaRef`. Adds `useDebianFirmware: bool` and `template`. Multiple BootTargets can share one BootMedia. Names: `debian-12`, `debian-12-no-firmware`.
 
-### Combined Files (Firmware Merging)
-
-When `combinedFiles` is set, the controller builds combined files at download time by concatenating sources:
-
-```yaml
-combinedFiles:
-  - name: firmware-initrd.gz
-    sources:
-      - initrd.gz
-      - firmware.cpio.gz
+BootMedia directory layout without firmware (flat):
+```
+debian-12/
+  linux       ← kernel
+  initrd.gz   ← initrd
 ```
 
-This follows the Debian netboot firmware method: `cat initrd.gz firmware.cpio.gz > firmware-initrd.gz`
-
-The combined file is stored alongside the originals. For example, `/static/debian-12/` contains:
-- `linux` (kernel)
-- `initrd.gz` (original initrd)
-- `firmware.cpio.gz` (firmware archive)
-- `firmware-initrd.gz` (combined initrd + firmware)
+BootMedia directory layout with firmware (subdirectories):
+```
+debian-12/
+  linux                   ← kernel (always top-level)
+  no-firmware/
+    initrd.gz             ← original initrd
+  with-firmware/
+    initrd.gz             ← initrd + firmware.cpio.gz concatenated
+```
 
 ### BootTarget Template Variables
 
@@ -126,13 +120,19 @@ Available in iPXE boot templates (files/boottarget-*.tpl):
 - `{{ .MachineName }}` - full machine name (e.g., "vm-01.lan") - use for answer file URLs
 - `{{ .Hostname }}` - first part before dot (e.g., "vm-01") - use for kernel hostname=
 - `{{ .Domain }}` - everything after first dot (e.g., "lan") - use for kernel domain=
-- `{{ .BootTarget }}` - BootTarget resource name - use for static file paths
+- `{{ .BootTarget }}` - BootTarget resource name
+- `{{ .BootMedia }}` - BootMedia resource name (use for static file paths)
+- `{{ .UseDebianFirmware }}` - bool, whether to use firmware-combined initrd
+- `{{ .ProvisionName }}` - Provision name (use for answer file URLs)
+- `{{ .KernelFilename }}` - kernel filename (e.g., "linux")
+- `{{ .InitrdFilename }}` - initrd filename (e.g., "initrd.gz")
+- `{{ .HasFirmware }}` - bool, whether BootMedia has firmware defined
 
 Example iPXE template:
 ```
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
-initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/firmware-initrd.gz
-imgargs linux initrd=firmware-initrd.gz hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/with-firmware/{{ .InitrdFilename }}
+imgargs {{ .KernelFilename }} initrd={{ .InitrdFilename }} hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg
 boot
 ```
 
@@ -144,6 +144,7 @@ Use OpenAPI validation in CRDs:
 
 ### Provision Status Phases
 - `Pending` - Waiting for machine to PXE boot
+- `WaitingForBootMedia` - BootMedia not yet Complete
 - `InProgress` - Boot started, installation running
 - `Complete` - Installation finished successfully
 - `Failed` - Installation failed

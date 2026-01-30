@@ -6,28 +6,28 @@ with the Helm chart installed.
 ## 1. Static Content Serving
 
 Script: `tests/integration/iso-content/run.sh` (wrapper)
-Per-BootTarget: `tests/integration/iso-content/test.sh <HOST_IP> <BOOTTARGET>`
+Per-BootMedia: `tests/integration/iso-content/test.sh <HOST_IP> <BOOTMEDIA>`
 
 Validates that the HTTP server correctly serves files downloaded by the
-controller and stored at `/opt/isoboot/files/{bootTarget}/`.
+controller and stored at `/opt/isoboot/files/{bootMedia}/`.
 
 ### 1.1 debian-12
 
-- [x] firmware.cpio.gz must exist (--expect-firmware flag fails test if missing)
+- [x] Firmware expected (--expect-firmware flag fails test if no-firmware/ dir missing)
 - [x] Invalid file path returns HTTP 404
 - [x] Kernel served via /static/ matches downloaded file (SHA-256)
-- [x] Initrd served via /static/ matches downloaded file (SHA-256)
-- [x] firmware-initrd.gz served via /static/ matches combined file (SHA-256)
-- [x] firmware-initrd.gz is larger than firmware alone
+- [x] Initrd (no-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd (with-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] with-firmware initrd is larger than no-firmware initrd
 
 ### 1.2 debian-13
 
-- [x] firmware.cpio.gz must exist (--expect-firmware flag fails test if missing)
+- [x] Firmware expected (--expect-firmware flag fails test if no-firmware/ dir missing)
 - [x] Invalid file path returns HTTP 404
 - [x] Kernel served via /static/ matches downloaded file (SHA-256)
-- [x] Initrd served via /static/ matches downloaded file (SHA-256)
-- [x] firmware-initrd.gz served via /static/ matches combined file (SHA-256)
-- [x] firmware-initrd.gz is larger than firmware alone
+- [x] Initrd (no-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd (with-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] with-firmware initrd is larger than no-firmware initrd
 
 ## 2. Boot Endpoints
 
@@ -68,7 +68,7 @@ transitions, content serving, and status invariants at every step.
 
 ### 4.5 Content Serving (status stays InProgress)
 - [x] Kernel matches downloaded file (SHA-256), status InProgress
-- [x] Initrd matches downloaded file (SHA-256), status InProgress
+- [x] Initrd (with-firmware) matches downloaded file (SHA-256), status InProgress
 - [x] Preseed returns correct content, status InProgress
 
 ### 4.6 Completion

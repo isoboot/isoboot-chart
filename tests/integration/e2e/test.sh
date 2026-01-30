@@ -12,6 +12,7 @@ MAC="00-00-00-00-00-02"
 WRONG_MAC="00-00-00-00-00-99"
 PROVISION="test-e2e-debian12"
 BOOT_TARGET="debian-12"
+BOOT_MEDIA="debian-12"
 FAILURES=0
 TESTS=0
 
@@ -36,13 +37,15 @@ get_status() {
 
 echo "Setup: computing reference hashes from downloaded files"
 
+# Kernel is always at top level under bootmedia name
 KERNEL_SHA=$(docker exec kind-control-plane \
-  sha256sum "/opt/isoboot/files/${BOOT_TARGET}/linux" | awk '{print $1}')
+  sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/linux" | awk '{print $1}')
+# BootTarget debian-12 uses useDebianFirmware: true, so initrd is in with-firmware/
 INITRD_SHA=$(docker exec kind-control-plane \
-  sha256sum "/opt/isoboot/files/${BOOT_TARGET}/initrd.gz" | awk '{print $1}')
+  sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/with-firmware/initrd.gz" | awk '{print $1}')
 
 echo "  kernel sha256: ${KERNEL_SHA}"
-echo "  initrd sha256: ${INITRD_SHA}"
+echo "  initrd (with-firmware) sha256: ${INITRD_SHA}"
 echo ""
 
 TMPDIR="/tmp/e2e-boot"
@@ -120,7 +123,7 @@ test_conditional_boot_200_in_progress() {
 
 test_kernel_in_progress() {
   curl -f -s -o "${TMPDIR}/kernel" \
-    "${BASE_URL}/static/${BOOT_TARGET}/linux"
+    "${BASE_URL}/static/${BOOT_MEDIA}/linux"
   local sha
   sha=$(sha256sum "${TMPDIR}/kernel" | awk '{print $1}')
   if [ "$sha" != "$KERNEL_SHA" ]; then
@@ -135,11 +138,11 @@ test_kernel_in_progress() {
   fi
 }
 
-# --- Test 6: GET initrd, verify SHA, status InProgress ---
+# --- Test 6: GET initrd (with-firmware), verify SHA, status InProgress ---
 
 test_initrd_in_progress() {
   curl -f -s -o "${TMPDIR}/initrd" \
-    "${BASE_URL}/static/${BOOT_TARGET}/initrd.gz"
+    "${BASE_URL}/static/${BOOT_MEDIA}/with-firmware/initrd.gz"
   local sha
   sha=$(sha256sum "${TMPDIR}/initrd" | awk '{print $1}')
   if [ "$sha" != "$INITRD_SHA" ]; then
@@ -216,7 +219,7 @@ run_test "create provision and verify Pending" test_create_provision_pending
 run_test "wrong MAC 404, status still Pending" test_wrong_mac_404_still_pending
 run_test "conditional-boot 200 with ${BOOT_TARGET}, status InProgress" test_conditional_boot_200_in_progress
 run_test "kernel matches downloaded file, status InProgress" test_kernel_in_progress
-run_test "initrd matches downloaded file, status InProgress" test_initrd_in_progress
+run_test "initrd (with-firmware) matches downloaded file, status InProgress" test_initrd_in_progress
 run_test "preseed content correct, status InProgress" test_preseed_in_progress
 run_test "done returns 200, status Complete" test_done_complete
 run_test "conditional-boot 404 after done, status Complete" test_after_done_404_still_complete

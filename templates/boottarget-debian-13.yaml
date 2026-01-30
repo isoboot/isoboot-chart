@@ -5,17 +5,7 @@ metadata:
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 spec:
-  files:
-    - url: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/debian-installer/amd64/linux"
-      checksumURL: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/SHA256SUMS"
-    - url: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/netboot/debian-installer/amd64/initrd.gz"
-      checksumURL: "https://deb.debian.org/debian/dists/trixie/main/installer-amd64/current/images/SHA256SUMS"
-    - url: "https://cdimage.debian.org/cdimage/firmware/trixie/current/firmware.cpio.gz"
-      checksumURL: "https://cdimage.debian.org/cdimage/firmware/trixie/current/SHA256SUMS"
-  combinedFiles:
-    - name: firmware-initrd.gz
-      sources:
-        - initrd.gz
-        - firmware.cpio.gz
+  bootMediaRef: debian-13
+  useDebianFirmware: true
   template: |
 {{ .Files.Get "files/boottarget-debian-v1.tpl" | indent 4 }}

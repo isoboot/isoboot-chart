@@ -8,18 +8,18 @@ fi
 
 HOST_IP=$1
 DIR=$(cd "$(dirname "$0")" && pwd)
-BOOT_TARGETS="debian-12 debian-13"
+BOOT_MEDIAS="debian-12 debian-13"
 GROUP_FAILURES=0
 
-for BT in $BOOT_TARGETS; do
-  echo "=== static-content: ${BT} ==="
+for BM in $BOOT_MEDIAS; do
+  echo "=== static-content: ${BM} ==="
   echo ""
 
-  # All unified BootTargets include firmware
+  # All BootMedia resources include firmware
   EXTRA_ARGS="--expect-firmware"
 
   set +e
-  "$DIR/test.sh" "$HOST_IP" "$BT" $EXTRA_ARGS
+  "$DIR/test.sh" "$HOST_IP" "$BM" $EXTRA_ARGS
   rc=$?
   set -e
 
@@ -34,8 +34,8 @@ done
 TOTAL_PASSED=0
 TOTAL_TESTS=0
 
-for BT in $BOOT_TARGETS; do
-  results="/tmp/static-content-${BT}.results"
+for BM in $BOOT_MEDIAS; do
+  results="/tmp/static-content-${BM}.results"
   if [ -f "$results" ]; then
     read -r passed tests < "$results"
     TOTAL_PASSED=$((TOTAL_PASSED + passed))
@@ -44,13 +44,13 @@ for BT in $BOOT_TARGETS; do
 done
 
 echo "=== Summary ==="
-for BT in $BOOT_TARGETS; do
-  results="/tmp/static-content-${BT}.results"
+for BM in $BOOT_MEDIAS; do
+  results="/tmp/static-content-${BM}.results"
   if [ -f "$results" ]; then
     read -r passed tests < "$results"
-    echo "  static-content/${BT}: ${passed}/${tests} passed"
+    echo "  static-content/${BM}: ${passed}/${tests} passed"
   else
-    echo "  static-content/${BT}: FAILED (no results)"
+    echo "  static-content/${BM}: FAILED (no results)"
   fi
 done
 echo "  static-content: ${TOTAL_PASSED}/${TOTAL_TESTS} passed"

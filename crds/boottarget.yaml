@@ -17,113 +17,28 @@ spec:
             spec:
               type: object
               required:
-                - files
+                - bootMediaRef
                 - template
-              x-kubernetes-validations:
-                - rule: "!has(self.combinedFiles) || self.combinedFiles.all(cf, !self.files.exists(f, f.url.split('/')[f.url.split('/').size() - 1] == cf.name))"
-                  message: "combinedFiles names must not conflict with downloaded file names"
               properties:
-                files:
-                  type: array
-                  minItems: 1
-                  description: Files to download (kernel, initrd, firmware, etc.)
-                  x-kubernetes-validations:
-                    - rule: "self.map(f, f.url.split('/')[f.url.split('/').size() - 1]).unique()"
-                      message: "file URLs must have unique filenames (last path segment)"
-                  items:
-                    type: object
-                    required:
-                      - url
-                    properties:
-                      url:
-                        type: string
-                        minLength: 1
-                        description: URL to download the file from
-                      checksumURL:
-                        type: string
-                        description: URL to a checksums file (SHA256SUMS format) for verification
-                combinedFiles:
-                  type: array
-                  description: Files built by concatenating downloaded files (e.g., initrd + firmware)
-                  items:
-                    type: object
-                    required:
-                      - name
-                      - sources
-                    properties:
-                      name:
-                        type: string
-                        minLength: 1
-                        description: Output filename
-                      sources:
-                        type: array
-                        minItems: 2
-                        description: Filenames of downloaded files to concatenate (in order)
-                        items:
-                          type: string
-                          minLength: 1
+                bootMediaRef:
+                  type: string
+                  minLength: 1
+                  description: Reference to a BootMedia resource name
+                useDebianFirmware:
+                  type: boolean
+                  default: false
+                  description: Whether to use the firmware-combined initrd (with-firmware/ subdirectory)
                 template:
                   type: string
                   minLength: 1
                   description: iPXE boot template content
-            status:
-              type: object
-              properties:
-                phase:
-                  type: string
-                  enum:
-                    - Pending
-                    - Downloading
-                    - Complete
-                    - Failed
-                  default: Pending
-                message:
-                  type: string
-                  description: Human-readable status message
-                files:
-                  type: array
-                  description: Download status per file
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                      phase:
-                        type: string
-                        enum:
-                          - Pending
-                          - Downloading
-                          - Complete
-                          - Failed
-                      sha256:
-                        type: string
-                combinedFiles:
-                  type: array
-                  description: Build status per combined file
-                  items:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                      phase:
-                        type: string
-                        enum:
-                          - Pending
-                          - Building
-                          - Complete
-                          - Failed
-                      sha256:
-                        type: string
-      subresources:
-        status: {}
       additionalPrinterColumns:
-        - name: Status
+        - name: BootMedia
           type: string
-          jsonPath: .status.phase
-        - name: Message
-          type: string
-          jsonPath: .status.message
-          priority: 1
+          jsonPath: .spec.bootMediaRef
+        - name: Firmware
+          type: boolean
+          jsonPath: .spec.useDebianFirmware
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp

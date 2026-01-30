@@ -16,16 +16,27 @@ Example: `boottarget-debian-v1.tpl` is loaded by all `templates/boottarget-debia
 - `{{ .MachineName }}` - Full machine name (use for answer file URLs)
 - `{{ .Hostname }}` - Hostname part (first segment before dot)
 - `{{ .Domain }}` - Domain part (everything after first dot)
-- `{{ .BootTarget }}` - BootTarget name (use for static file paths)
+- `{{ .BootTarget }}` - BootTarget name
+- `{{ .BootMedia }}` - BootMedia name (use for static file paths)
+- `{{ .UseDebianFirmware }}` - bool, whether to use firmware-combined initrd
 - `{{ .ProvisionName }}` - Provision name (use for answer file URLs)
+- `{{ .KernelFilename }}` - kernel filename (e.g., "linux")
+- `{{ .InitrdFilename }}` - initrd filename (e.g., "initrd.gz")
+- `{{ .HasFirmware }}` - bool, whether BootMedia has firmware defined
 
 ## Example
 
 ```ipxe
 #!ipxe
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
-initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/firmware-initrd.gz
-imgargs linux initrd=firmware-initrd.gz auto=true hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg --- quiet
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
+{{- if and .HasFirmware .UseDebianFirmware }}
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/with-firmware/{{ .InitrdFilename }}
+{{- else if .HasFirmware }}
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/no-firmware/{{ .InitrdFilename }}
+{{- else }}
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .InitrdFilename }}
+{{- end }}
+imgargs {{ .KernelFilename }} initrd={{ .InitrdFilename }} auto=true hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg --- quiet
 boot
 ```
 
