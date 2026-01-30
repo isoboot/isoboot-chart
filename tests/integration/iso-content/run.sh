@@ -15,8 +15,14 @@ for BT in $BOOT_TARGETS; do
   echo "=== static-content: ${BT} ==="
   echo ""
 
+  # Determine if this BootTarget should have firmware
+  EXTRA_ARGS=""
+  case "$BT" in
+    *-with-firmware) EXTRA_ARGS="--expect-firmware" ;;
+  esac
+
   set +e
-  "$DIR/test.sh" "$HOST_IP" "$BT"
+  "$DIR/test.sh" "$HOST_IP" "$BT" $EXTRA_ARGS
   rc=$?
   set -e
 

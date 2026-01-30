@@ -23,6 +23,14 @@ controller and stored at `/opt/isoboot/files/{bootTarget}/`.
 - [x] Kernel served via /static/ matches downloaded file (SHA-256)
 - [x] Initrd served via /static/ matches downloaded file (SHA-256)
 
+### 1.3 debian-13-with-firmware
+
+- [x] firmware.cpio.gz must exist (--expect-firmware flag fails test if missing)
+- [x] Invalid file path returns HTTP 404
+- [x] Kernel served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd served via /static/ matches downloaded file (SHA-256)
+- [x] Combined initrd (initrd + firmware) is larger than firmware alone
+
 ## 2. Boot Endpoints
 
 ### 2.1 Health Check

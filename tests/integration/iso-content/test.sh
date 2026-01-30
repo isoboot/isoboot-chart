@@ -2,12 +2,16 @@
 set -euo pipefail
 
 if [ "$#" -lt 2 ] || [ -z "${1:-}" ] || [ -z "${2:-}" ]; then
-  echo "Usage: $0 <HOST_IP> <BOOTTARGET>" >&2
+  echo "Usage: $0 <HOST_IP> <BOOTTARGET> [--expect-firmware]" >&2
   exit 1
 fi
 
 HOST_IP=$1
 BOOTTARGET=$2
+EXPECT_FIRMWARE=false
+if [ "${3:-}" = "--expect-firmware" ]; then
+  EXPECT_FIRMWARE=true
+fi
 BASE_URL="http://${HOST_IP}:8080"
 FAILURES=0
 TESTS=0
@@ -37,18 +41,19 @@ INITRD_SHA=$(docker exec kind-control-plane \
 echo "  kernel sha256: ${KERNEL_SHA}"
 echo "  initrd sha256: ${INITRD_SHA}"
 
-# Check if this is a with-firmware variant (has firmware.cpio.gz alongside initrd.gz)
+# Check for firmware file
 HAS_FIRMWARE=false
 if docker exec kind-control-plane test -f "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz" 2>/dev/null; then
   HAS_FIRMWARE=true
-  # For with-firmware variants, the on-disk initrd.gz is the combined file
-  # (controller concatenated original initrd.gz + firmware.cpio.gz into it)
   FW_SIZE=$(docker exec kind-control-plane \
     stat -c%s "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz")
   INITRD_SIZE=$(docker exec kind-control-plane \
     stat -c%s "/opt/isoboot/files/${BOOTTARGET}/initrd.gz")
   echo "  firmware size: ${FW_SIZE}"
   echo "  initrd size (combined): ${INITRD_SIZE}"
+elif [ "$EXPECT_FIRMWARE" = "true" ]; then
+  echo "FAIL: firmware.cpio.gz expected but not found for ${BOOTTARGET}"
+  exit 1
 fi
 echo ""
 
