@@ -93,7 +93,7 @@ kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename
 ### CRD Architecture: BootMedia + BootTarget
 
 - **BootMedia** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
-- **BootTarget** references a BootMedia via `bootMediaRef`. Adds `useDebianFirmware: bool` and `template`. Multiple BootTargets can share one BootMedia. Names: `debian-12`, `debian-12-no-firmware`.
+- **BootTarget** references a BootMedia via `bootMediaRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootMedia. Names: `debian-12`, `debian-12-no-firmware`.
 
 BootMedia directory layout without firmware (flat):
 ```
@@ -122,7 +122,7 @@ Available in iPXE boot templates (files/boottarget-*.tpl):
 - `{{ .Domain }}` - everything after first dot (e.g., "lan") - use for kernel domain=
 - `{{ .BootTarget }}` - BootTarget resource name
 - `{{ .BootMedia }}` - BootMedia resource name (use for static file paths)
-- `{{ .UseDebianFirmware }}` - bool, whether to use firmware-combined initrd
+- `{{ .UseFirmware }}` - bool, whether to use firmware-combined initrd
 - `{{ .ProvisionName }}` - Provision name (use for answer file URLs)
 - `{{ .KernelFilename }}` - kernel filename (e.g., "linux")
 - `{{ .InitrdFilename }}` - initrd filename (e.g., "initrd.gz")

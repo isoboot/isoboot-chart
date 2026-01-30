@@ -66,13 +66,13 @@ metadata:
   name: debian-12
 spec:
   bootMediaRef: debian-12
-  useDebianFirmware: true
+  useFirmware: true
   template: |
     #!ipxe
     ...
 ```
 - `bootMediaRef` (required): Reference to BootMedia resource
-- `useDebianFirmware` (optional): Whether to use with-firmware/ initrd
+- `useFirmware` (optional): Whether to use with-firmware/ initrd
 - `template` (required): iPXE boot template
 
 ### Provision

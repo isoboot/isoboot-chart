@@ -18,7 +18,7 @@ Example: `boottarget-debian-v1.tpl` is loaded by all `templates/boottarget-debia
 - `{{ .Domain }}` - Domain part (everything after first dot)
 - `{{ .BootTarget }}` - BootTarget name
 - `{{ .BootMedia }}` - BootMedia name (use for static file paths)
-- `{{ .UseDebianFirmware }}` - bool, whether to use firmware-combined initrd
+- `{{ .UseFirmware }}` - bool, whether to use firmware-combined initrd
 - `{{ .ProvisionName }}` - Provision name (use for answer file URLs)
 - `{{ .KernelFilename }}` - kernel filename (e.g., "linux")
 - `{{ .InitrdFilename }}` - initrd filename (e.g., "initrd.gz")
@@ -29,7 +29,7 @@ Example: `boottarget-debian-v1.tpl` is loaded by all `templates/boottarget-debia
 ```ipxe
 #!ipxe
 kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
-{{- if and .HasFirmware .UseDebianFirmware }}
+{{- if and .HasFirmware .UseFirmware }}
 initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/with-firmware/{{ .InitrdFilename }}
 {{- else if .HasFirmware }}
 initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/no-firmware/{{ .InitrdFilename }}

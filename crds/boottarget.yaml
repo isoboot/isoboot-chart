@@ -24,7 +24,7 @@ spec:
                   type: string
                   minLength: 1
                   description: Reference to a BootMedia resource name
-                useDebianFirmware:
+                useFirmware:
                   type: boolean
                   default: false
                   description: Whether to use the firmware-combined initrd (with-firmware/ subdirectory)
@@ -38,7 +38,7 @@ spec:
           jsonPath: .spec.bootMediaRef
         - name: Firmware
           type: boolean
-          jsonPath: .spec.useDebianFirmware
+          jsonPath: .spec.useFirmware
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp

@@ -40,7 +40,7 @@ echo "Setup: computing reference hashes from downloaded files"
 # Kernel is always at top level under bootmedia name
 KERNEL_SHA=$(docker exec kind-control-plane \
   sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/linux" | awk '{print $1}')
-# BootTarget debian-12-no-firmware uses useDebianFirmware: false, so initrd is in no-firmware/
+# BootTarget debian-12-no-firmware uses useFirmware: false, so initrd is in no-firmware/
 INITRD_SHA=$(docker exec kind-control-plane \
   sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/no-firmware/initrd.gz" | awk '{print $1}')
 

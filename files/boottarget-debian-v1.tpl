@@ -1,7 +1,7 @@
 #!ipxe
 kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
 {{- if .HasFirmware }}
-{{- if .UseDebianFirmware }}
+{{- if .UseFirmware }}
 initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/with-firmware/{{ .InitrdFilename }}
 {{- else }}
 initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/no-firmware/{{ .InitrdFilename }}
