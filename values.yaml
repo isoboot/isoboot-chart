@@ -6,7 +6,7 @@
 http:
   port: 8080        # External port (nginx listens here, used in templates)
   listenPort: 80    # Internal port (Go server, behind nginx)
-  commit: "91a1297"  # Git commit to install
+  commit: "c1e3820"  # Git commit to install
   resources:
     limits:
       memory: "512Mi"
@@ -17,7 +17,7 @@ http:
 
 # Controller (manages provisions, talks to k8s API)
 controller:
-  commit: "91a1297"  # Git commit to install
+  commit: "c1e3820"  # Git commit to install
   resources:
     limits:
       memory: "512Mi"
