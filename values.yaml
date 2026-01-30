@@ -5,8 +5,8 @@
 # HTTP server for boot files (no k8s access, talks to controller via gRPC)
 http:
   port: 8080        # External port (nginx listens here, used in templates)
-  listenPort: 8082  # Internal port (Go server, localhost only)
-  commit: "d07f159"  # Git commit to install
+  listenPort: 80    # Internal port (Go server, behind nginx)
+  commit: "91a1297"  # Git commit to install
   resources:
     limits:
       memory: "512Mi"
@@ -17,7 +17,7 @@ http:
 
 # Controller (manages provisions, talks to k8s API)
 controller:
-  commit: "d07f159"  # Git commit to install
+  commit: "91a1297"  # Git commit to install
   resources:
     limits:
       memory: "512Mi"

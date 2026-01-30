@@ -17,8 +17,6 @@ spec:
         {{- include "isoboot.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: http
     spec:
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: http
           image: "golang:1.25-alpine"
@@ -28,25 +26,19 @@ spec:
             - -c
             - |
               set -e
-              INTERFACE="{{ required "interface is required" .Values.interface }}"
-              HTTP_PORT="{{ .Values.http.port }}"
               CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:8081"
 
-              echo "Installing git and iproute2..."
-              apk add --no-cache git iproute2
-
-              echo "Detecting host IP from interface ${INTERFACE}..."
-              HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
-              echo "Detected host IP: ${HOST_IP}"
+              echo "Installing git..."
+              apk add --no-cache git
 
               echo "Installing isoboot-http..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
 
-              echo "Starting isoboot-http on 127.0.0.1:{{ .Values.http.listenPort }} (advertised as ${HOST_IP}:${HTTP_PORT})..."
+              echo "Starting isoboot-http on :{{ .Values.http.listenPort }} (advertised as ${HOST_IP}:{{ .Values.http.port }})..."
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."
               exec isoboot-http \
                 --host="${HOST_IP}" \
-                --port="${HTTP_PORT}" \
+                --port="{{ .Values.http.port }}" \
                 --listen-port="{{ .Values.http.listenPort }}" \
                 --proxy-port="{{ .Values.proxy.port }}" \
                 --controller="${CONTROLLER_ADDR}" \
@@ -54,6 +46,10 @@ spec:
           env:
             - name: GOCACHE
               value: /go/cache
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
           ports:
             - name: http
               containerPort: {{ .Values.http.listenPort }}
@@ -64,13 +60,15 @@ spec:
           resources:
             {{- toYaml .Values.http.resources | nindent 12 }}
           livenessProbe:
-            exec:
-              command: ["wget", "-q", "--spider", "http://127.0.0.1:{{ .Values.http.listenPort }}/healthz"]
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.listenPort }}
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
-            exec:
-              command: ["wget", "-q", "--spider", "http://127.0.0.1:{{ .Values.http.listenPort }}/healthz"]
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.listenPort }}
             initialDelaySeconds: 10
             periodSeconds: 5
       volumes:
