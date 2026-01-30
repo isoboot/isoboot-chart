@@ -29,6 +29,17 @@ controller and stored at `/opt/isoboot/files/{bootMedia}/`.
 - [x] Initrd (with-firmware) served via /static/ matches downloaded file (SHA-256)
 - [x] with-firmware initrd is larger than no-firmware initrd
 
+### 1.3 ISO Extraction Comparison (debian-13-iso)
+
+Script: `tests/integration/iso-compare/test.sh <HOST_IP>`
+
+Compares files from direct download (debian-13) vs ISO extraction (debian-13-iso)
+to verify ISO extraction produces byte-identical output.
+
+- [x] Kernel hash matches between direct download and ISO extraction
+- [x] Initrd (no-firmware) hash matches between direct download and ISO extraction
+- [x] Initrd (with-firmware) hash matches between direct download and ISO extraction
+
 ## 2. Boot Endpoints
 
 ### 2.1 Health Check
@@ -68,7 +79,7 @@ transitions, content serving, and status invariants at every step.
 
 ### 4.5 Content Serving (status stays InProgress)
 - [x] Kernel matches downloaded file (SHA-256), status InProgress
-- [x] Initrd (with-firmware) matches downloaded file (SHA-256), status InProgress
+- [x] Initrd (no-firmware) matches downloaded file (SHA-256), status InProgress
 - [x] Preseed returns correct content, status InProgress
 
 ### 4.6 Completion

@@ -138,7 +138,7 @@ test_kernel_in_progress() {
   fi
 }
 
-# --- Test 6: GET initrd (with-firmware), verify SHA, status InProgress ---
+# --- Test 6: GET initrd (no-firmware), verify SHA, status InProgress ---
 
 test_initrd_in_progress() {
   curl -f -s -o "${TMPDIR}/initrd" \
