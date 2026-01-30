@@ -34,11 +34,10 @@ spec:
               echo "Installing isoboot-http..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
 
-              echo "Starting isoboot-http on :{{ .Values.http.listenPort }} (advertised as ${HOST_IP}:{{ .Values.http.port }})..."
+              echo "Starting isoboot-http on :{{ .Values.http.listenPort }}..."
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."
               exec isoboot-http \
                 --host="${HOST_IP}" \
-                --port="{{ .Values.http.port }}" \
                 --listen-port="{{ .Values.http.listenPort }}" \
                 --proxy-port="{{ .Values.proxy.port }}" \
                 --controller="${CONTROLLER_ADDR}" \
