@@ -28,11 +28,27 @@ spec:
             - -c
             - |
               set -e
-              apk add --no-cache nginx
+              apk add --no-cache nginx iproute2
+
+              INTERFACE="{{ required "interface is required" .Values.interface }}"
+              HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
+              HTTP_PORT="{{ .Values.http.port }}"
+
+              # Generate boot.ipxe (static, only depends on host IP and port)
+              cat > /tmp/boot.ipxe <<IPXE
+              #!ipxe
+              chain http://${HOST_IP}:${HTTP_PORT}/dynamic/boot/conditional-boot?mac=\${mac:hexhyp} || sanboot --no-describe --drive 0x80
+              IPXE
+              sed -i 's/^              //' /tmp/boot.ipxe
 
               cat > /etc/nginx/http.d/default.conf <<NGINX
               server {
                   listen {{ .Values.http.port }};
+
+                  location = /static/boot.ipxe {
+                      alias /tmp/boot.ipxe;
+                      default_type text/plain;
+                  }
 
                   location /static/ {
                       alias /opt/isoboot/files/;

@@ -42,7 +42,7 @@ test_healthz() {
 
 test_boot_ipxe() {
   local body code
-  code=$(curl -s -o "${TMPDIR}/boot-ipxe-body" -w '%{http_code}' "${BASE_URL}/dynamic/boot/boot.ipxe")
+  code=$(curl -s -o "${TMPDIR}/boot-ipxe-body" -w '%{http_code}' "${BASE_URL}/static/boot.ipxe")
   body=$(cat "${TMPDIR}/boot-ipxe-body")
   if [ "$code" != "200" ]; then
     echo -n "(HTTP ${code}) "

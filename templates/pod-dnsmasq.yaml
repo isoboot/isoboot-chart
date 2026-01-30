@@ -67,7 +67,7 @@ spec:
           pxe-service=tag:!ipxe,BC_EFI,"Network Boot UEFI",ipxe.efi,${HOST_IP}
 
           # iPXE clients get HTTP script
-          dhcp-boot=tag:ipxe,http://${HOST_IP}:${HTTP_PORT}/dynamic/boot/boot.ipxe
+          dhcp-boot=tag:ipxe,http://${HOST_IP}:${HTTP_PORT}/static/boot.ipxe
 
           # TFTP server
           enable-tftp

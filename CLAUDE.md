@@ -35,8 +35,8 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 - **Pod with hostNetwork**: Uses the host's network stack to bind to DHCP/TFTP ports
 - **dnsmasq**: Runs in proxy DHCP mode - responds to PXE requests without handing out IP addresses
 - **iPXE**: Boot files (undionly.kpxe for BIOS, ipxe.efi for UEFI) served via TFTP
-- **nginx** (port 8080): External-facing reverse proxy. Serves `/static/` files from disk, proxies `/dynamic/*` to the Go server
-- **isoboot-http** (127.0.0.1:8082): Go HTTP server, localhost-only. Handles boot scripts, answer files, health checks. Nginx strips `/dynamic/` prefix and forwards to it
+- **nginx** (port 8080): External-facing reverse proxy. Serves `/static/` files from disk (including `boot.ipxe` generated at startup), proxies `/dynamic/*` to the Go server
+- **isoboot-http** (127.0.0.1:8082): Go HTTP server, localhost-only. Handles conditional-boot, answer files, health checks. Nginx strips `/dynamic/` prefix and forwards to it
 
 ## Key Design Decisions
 
