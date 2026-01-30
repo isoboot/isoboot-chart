@@ -31,4 +31,4 @@ boot
 
 ## Why .tpl Files?
 
-Helm templates containing Go template syntax (`{{ .Var }}`) need escaping (`{{"{{" }} .Var {{"}}"  }}`). Using `.Files.Get` with separate .tpl files avoids this - the .tpl content is inserted verbatim.
+Helm templates containing Go template syntax (`{{ .Var }}`) need escaping (`{{ "{{" }} .Var {{ "}}" }}`). Using `.Files.Get` with separate .tpl files avoids this - the .tpl content is inserted verbatim.
