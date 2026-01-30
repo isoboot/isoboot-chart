@@ -103,7 +103,7 @@ spec:
                         type: string
                         enum:
                           - Pending
-                          - Downloading
+                          - Building
                           - Complete
                           - Failed
                       sha256:
