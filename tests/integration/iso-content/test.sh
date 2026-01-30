@@ -41,16 +41,19 @@ INITRD_SHA=$(docker exec kind-control-plane \
 echo "  kernel sha256: ${KERNEL_SHA}"
 echo "  initrd sha256: ${INITRD_SHA}"
 
-# Check for firmware file
+# Check for firmware files
 HAS_FIRMWARE=false
 if docker exec kind-control-plane test -f "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz" 2>/dev/null; then
   HAS_FIRMWARE=true
   FW_SIZE=$(docker exec kind-control-plane \
     stat -c%s "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz")
-  INITRD_SIZE=$(docker exec kind-control-plane \
-    stat -c%s "/opt/isoboot/files/${BOOTTARGET}/initrd.gz")
+  COMBINED_SHA=$(docker exec kind-control-plane \
+    sha256sum "/opt/isoboot/files/${BOOTTARGET}/firmware-initrd.gz" | awk '{print $1}')
+  COMBINED_SIZE=$(docker exec kind-control-plane \
+    stat -c%s "/opt/isoboot/files/${BOOTTARGET}/firmware-initrd.gz")
   echo "  firmware size: ${FW_SIZE}"
-  echo "  initrd size (combined): ${INITRD_SIZE}"
+  echo "  firmware-initrd sha256: ${COMBINED_SHA}"
+  echo "  firmware-initrd size: ${COMBINED_SIZE}"
 elif [ "$EXPECT_FIRMWARE" = "true" ]; then
   echo "FAIL: firmware.cpio.gz expected but not found for ${BOOTTARGET}"
   exit 1
@@ -87,10 +90,19 @@ test_initrd() {
   [ "$sha" = "$INITRD_SHA" ]
 }
 
-test_combined_initrd_larger_than_firmware() {
-  # The combined initrd.gz must be larger than firmware.cpio.gz alone,
+test_firmware_initrd() {
+  curl -f -s -o "${TMPDIR}/firmware-initrd" \
+    "${BASE_URL}/static/${BOOTTARGET}/firmware-initrd.gz"
+  local sha
+  sha=$(sha256sum "${TMPDIR}/firmware-initrd" | awk '{print $1}')
+  echo -n "(sha256=${sha}) "
+  [ "$sha" = "$COMBINED_SHA" ]
+}
+
+test_firmware_initrd_larger_than_firmware() {
+  # firmware-initrd.gz must be larger than firmware.cpio.gz alone,
   # proving it contains both the original initrd and the firmware.
-  [ "$INITRD_SIZE" -gt "$FW_SIZE" ]
+  [ "$COMBINED_SIZE" -gt "$FW_SIZE" ]
 }
 
 run_test "invalid file returns 404" test_invalid_file_404
@@ -98,7 +110,8 @@ run_test "kernel matches downloaded file" test_kernel
 run_test "initrd matches downloaded file" test_initrd
 
 if [ "$HAS_FIRMWARE" = "true" ]; then
-  run_test "combined initrd is larger than firmware alone" test_combined_initrd_larger_than_firmware
+  run_test "firmware-initrd matches combined file" test_firmware_initrd
+  run_test "firmware-initrd is larger than firmware alone" test_firmware_initrd_larger_than_firmware
 fi
 
 PASSED=$((TESTS - FAILURES))

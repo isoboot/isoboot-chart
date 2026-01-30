@@ -8,18 +8,15 @@ fi
 
 HOST_IP=$1
 DIR=$(cd "$(dirname "$0")" && pwd)
-BOOT_TARGETS="debian-12-no-firmware debian-13-no-firmware debian-13-with-firmware"
+BOOT_TARGETS="debian-12 debian-13"
 GROUP_FAILURES=0
 
 for BT in $BOOT_TARGETS; do
   echo "=== static-content: ${BT} ==="
   echo ""
 
-  # Determine if this BootTarget should have firmware
-  EXTRA_ARGS=""
-  case "$BT" in
-    *-with-firmware) EXTRA_ARGS="--expect-firmware" ;;
-  esac
+  # All unified BootTargets include firmware
+  EXTRA_ARGS="--expect-firmware"
 
   set +e
   "$DIR/test.sh" "$HOST_IP" "$BT" $EXTRA_ARGS

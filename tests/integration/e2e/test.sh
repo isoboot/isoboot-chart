@@ -11,7 +11,7 @@ BASE_URL="http://${HOST_IP}:8080"
 MAC="00-00-00-00-00-02"
 WRONG_MAC="00-00-00-00-00-99"
 PROVISION="test-e2e-debian12"
-BOOT_TARGET="debian-12-no-firmware"
+BOOT_TARGET="debian-12"
 FAILURES=0
 TESTS=0
 
@@ -53,7 +53,7 @@ mkdir -p "$TMPDIR"
 test_initial_404() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404, got ${code}) "
     return 1
@@ -84,7 +84,7 @@ EOF
 test_wrong_mac_404_still_pending() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${WRONG_MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${WRONG_MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404 for wrong MAC, got ${code}) "
     return 1
@@ -102,7 +102,7 @@ test_wrong_mac_404_still_pending() {
 test_conditional_boot_200_in_progress() {
   local body code
   code=$(curl -s -o "${TMPDIR}/conditional-body" -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   body=$(cat "${TMPDIR}/conditional-body")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
@@ -159,7 +159,7 @@ test_initrd_in_progress() {
 test_preseed_in_progress() {
   local body code
   code=$(curl -s -o "${TMPDIR}/preseed" -w '%{http_code}' \
-    "${BASE_URL}/answer/${PROVISION}/preseed.cfg")
+    "${BASE_URL}/dynamic/answer/${PROVISION}/preseed.cfg")
   body=$(cat "${TMPDIR}/preseed")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
@@ -182,7 +182,7 @@ test_preseed_in_progress() {
 test_done_complete() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/done?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/done?mac=${MAC}")
   if [ "$code" != "200" ]; then
     echo -n "(/boot/done returned ${code}, expected 200) "
     return 1
@@ -196,7 +196,7 @@ test_done_complete() {
 test_after_done_404_still_complete() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404, got ${code}) "
     return 1

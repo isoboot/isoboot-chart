@@ -39,8 +39,8 @@ spec:
                       autoindex off;
                   }
 
-                  location / {
-                      proxy_pass http://127.0.0.1:{{ .Values.http.listenPort }};
+                  location /dynamic/ {
+                      proxy_pass http://127.0.0.1:{{ .Values.http.listenPort }}/;
                       proxy_set_header Host \$host;
                       proxy_set_header X-Real-IP \$remote_addr;
                   }
@@ -69,13 +69,13 @@ spec:
             {{- toYaml .Values.nginx.resources | nindent 12 }}
           livenessProbe:
             httpGet:
-              path: /healthz
+              path: /dynamic/healthz
               port: {{ .Values.http.port }}
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /dynamic/healthz
               port: {{ .Values.http.port }}
             initialDelaySeconds: 10
             periodSeconds: 5

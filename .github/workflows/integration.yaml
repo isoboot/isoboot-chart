@@ -62,10 +62,8 @@ jobs:
       - name: Wait for BootTargets
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
-            boottarget/debian-12-no-firmware \
-            boottarget/debian-12-with-firmware \
-            boottarget/debian-13-no-firmware \
-            boottarget/debian-13-with-firmware \
+            boottarget/debian-12 \
+            boottarget/debian-13 \
             -n isoboot --timeout=600s
 
       - name: Apply boot test fixtures

@@ -1,7 +1,7 @@
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
-  name: debian-12-with-firmware
+  name: debian-12
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 spec:
@@ -13,7 +13,7 @@ spec:
     - url: "https://cdimage.debian.org/cdimage/firmware/bookworm/current/firmware.cpio.gz"
       checksumURL: "https://cdimage.debian.org/cdimage/firmware/bookworm/current/SHA256SUMS"
   combinedFiles:
-    - name: initrd.gz
+    - name: firmware-initrd.gz
       sources:
         - initrd.gz
         - firmware.cpio.gz

@@ -31,7 +31,7 @@ run_test() {
 
 test_healthz() {
   local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE_URL}/healthz")
+  code=$(curl -s -o /dev/null -w '%{http_code}' "${BASE_URL}/dynamic/healthz")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
     return 1
@@ -42,7 +42,7 @@ test_healthz() {
 
 test_boot_ipxe() {
   local body code
-  code=$(curl -s -o "${TMPDIR}/boot-ipxe-body" -w '%{http_code}' "${BASE_URL}/boot/boot.ipxe")
+  code=$(curl -s -o "${TMPDIR}/boot-ipxe-body" -w '%{http_code}' "${BASE_URL}/dynamic/boot/boot.ipxe")
   body=$(cat "${TMPDIR}/boot-ipxe-body")
   if [ "$code" != "200" ]; then
     echo -n "(HTTP ${code}) "
@@ -63,17 +63,17 @@ test_boot_ipxe() {
 test_conditional_boot_no_provision() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404, got ${code}) "
     return 1
   fi
 }
 
-# --- Test 4: conditional-boot 200 with debian-13-no-firmware ---
+# --- Test 4: conditional-boot 200 with debian-13 ---
 
 test_conditional_boot_debian13() {
-  # Create a Provision for debian-13-no-firmware
+  # Create a Provision for debian-13
   kubectl apply -f - <<'EOF'
 apiVersion: isoboot.io/v1alpha1
 kind: Provision
@@ -82,7 +82,7 @@ metadata:
   namespace: isoboot
 spec:
   machineRef: test-boot.lab
-  bootTargetRef: debian-13-no-firmware
+  bootTargetRef: debian-13
   responseTemplateRef: test-boot-rt
 EOF
 
@@ -92,14 +92,14 @@ EOF
 
   local body code
   code=$(curl -s -o "${TMPDIR}/conditional-body" -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   body=$(cat "${TMPDIR}/conditional-body")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
     return 1
   fi
-  if ! echo "$body" | grep -q 'debian-13-no-firmware'; then
-    echo -n "(missing debian-13-no-firmware in body) "
+  if ! echo "$body" | grep -q 'debian-13'; then
+    echo -n "(missing debian-13 in body) "
     return 1
   fi
 }
@@ -110,7 +110,7 @@ test_conditional_boot_after_done() {
   # Mark the provision as complete via /boot/done
   local done_code
   done_code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/done?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/done?mac=${MAC}")
   if [ "$done_code" != "200" ]; then
     echo -n "(/boot/done returned ${done_code}, expected 200) "
     return 1
@@ -123,17 +123,17 @@ test_conditional_boot_after_done() {
   # Now conditional-boot should 404 (no more Pending provisions)
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404 after done, got ${code}) "
     return 1
   fi
 }
 
-# --- Test 6: conditional-boot 200 with debian-12-with-firmware ---
+# --- Test 6: conditional-boot 200 with debian-12 ---
 
 test_conditional_boot_debian12() {
-  # Create a second Provision for debian-12-with-firmware
+  # Create a second Provision for debian-12
   kubectl apply -f - <<'EOF'
 apiVersion: isoboot.io/v1alpha1
 kind: Provision
@@ -142,7 +142,7 @@ metadata:
   namespace: isoboot
 spec:
   machineRef: test-boot.lab
-  bootTargetRef: debian-12-with-firmware
+  bootTargetRef: debian-12
   responseTemplateRef: test-boot-rt
 EOF
 
@@ -152,14 +152,14 @@ EOF
 
   local body code
   code=$(curl -s -o "${TMPDIR}/conditional-body2" -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   body=$(cat "${TMPDIR}/conditional-body2")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
     return 1
   fi
-  if ! echo "$body" | grep -q 'debian-12-with-firmware'; then
-    echo -n "(missing debian-12-with-firmware in body) "
+  if ! echo "$body" | grep -q 'debian-12'; then
+    echo -n "(missing debian-12 in body) "
     return 1
   fi
 }
@@ -169,9 +169,9 @@ EOF
 run_test "healthz returns 200" test_healthz
 run_test "boot.ipxe returns valid iPXE script" test_boot_ipxe
 run_test "conditional-boot 404 with no provision" test_conditional_boot_no_provision
-run_test "conditional-boot 200 with debian-13-no-firmware" test_conditional_boot_debian13
+run_test "conditional-boot 200 with debian-13" test_conditional_boot_debian13
 run_test "conditional-boot 404 after done" test_conditional_boot_after_done
-run_test "conditional-boot 200 with debian-12-with-firmware" test_conditional_boot_debian12
+run_test "conditional-boot 200 with debian-12" test_conditional_boot_debian12
 
 PASSED=$((TESTS - FAILURES))
 echo "boot: ${PASSED}/${TESTS} passed"

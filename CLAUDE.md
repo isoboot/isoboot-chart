@@ -35,8 +35,8 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 - **Pod with hostNetwork**: Uses the host's network stack to bind to DHCP/TFTP ports
 - **dnsmasq**: Runs in proxy DHCP mode - responds to PXE requests without handing out IP addresses
 - **iPXE**: Boot files (undionly.kpxe for BIOS, ipxe.efi for UEFI) served via TFTP
-- **nginx** (port 8080): External-facing reverse proxy. Serves `/static/` files from disk, proxies `/boot/`, `/answer/`, `/healthz` to the Go server
-- **isoboot-http** (127.0.0.1:8082): Go HTTP server, localhost-only. Handles boot scripts, answer files, health checks. Nginx forwards requests to it
+- **nginx** (port 8080): External-facing reverse proxy. Serves `/static/` files from disk, proxies `/dynamic/*` to the Go server
+- **isoboot-http** (127.0.0.1:8082): Go HTTP server, localhost-only. Handles boot scripts, answer files, health checks. Nginx strips `/dynamic/` prefix and forwards to it
 
 ## Key Design Decisions
 
@@ -89,9 +89,9 @@ kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
 ```
 
 ### BootTarget Naming Convention
-Create separate BootTargets for different boot configurations:
-- `debian-13-with-firmware` - downloads kernel, initrd, firmware; builds combined initrd
-- `debian-13-no-firmware` - downloads kernel and initrd only
+One BootTarget per OS version. Each downloads kernel, initrd, and firmware, then builds a combined `firmware-initrd.gz`:
+- `debian-12` - Debian Bookworm (kernel, initrd, firmware, firmware-initrd.gz)
+- `debian-13` - Debian Trixie (kernel, initrd, firmware, firmware-initrd.gz)
 
 BootTarget fields:
 - `files` (required): Array of files to download, each with `url` and optional `checksumURL`
@@ -104,16 +104,19 @@ When `combinedFiles` is set, the controller builds combined files at download ti
 
 ```yaml
 combinedFiles:
-  - name: initrd.gz
+  - name: firmware-initrd.gz
     sources:
       - initrd.gz
       - firmware.cpio.gz
 ```
 
-This follows the Debian netboot firmware method: `cat initrd.gz firmware.cpio.gz > combined.gz`
+This follows the Debian netboot firmware method: `cat initrd.gz firmware.cpio.gz > firmware-initrd.gz`
 
-The combined file replaces the original when served via `/static/`. For example, requesting
-`/static/debian-13-with-firmware/initrd.gz` returns the combined initrd+firmware.
+The combined file is stored alongside the originals. For example, `/static/debian-12/` contains:
+- `linux` (kernel)
+- `initrd.gz` (original initrd)
+- `firmware.cpio.gz` (firmware archive)
+- `firmware-initrd.gz` (combined initrd + firmware)
 
 ### BootTarget Template Variables
 
@@ -128,8 +131,8 @@ Available in iPXE boot templates (files/boottarget-*.tpl):
 Example iPXE template:
 ```
 kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
-initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/initrd.gz
-imgargs linux hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/answer/{{ .ProvisionName }}/preseed.cfg
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/firmware-initrd.gz
+imgargs linux initrd=firmware-initrd.gz hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg
 boot
 ```
 

@@ -1,2 +1,2 @@
 #!ipxe
-chain http://{{ .Host }}:{{ .Port }}/boot/conditional-boot?mac=${mac:hexhyp} || sanboot --no-describe --drive 0x80
+chain http://{{ .Host }}:{{ .Port }}/dynamic/boot/conditional-boot?mac=${mac:hexhyp} || sanboot --no-describe --drive 0x80
