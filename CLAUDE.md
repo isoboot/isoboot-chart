@@ -7,7 +7,7 @@ Helm chart for isoboot - PXE boot infrastructure on Kubernetes.
 This repo works alongside `isoboot` (Go code for controller and HTTP server). Together they provide:
 - **dnsmasq**: Proxy DHCP for PXE boot (this chart)
 - **isoboot-controller**: Watches Provision CRs, manages boot workflows (Go repo)
-- **isoboot-http**: Serves iPXE scripts, ISO content, answer files (Go repo)
+- **isoboot-http**: Serves iPXE scripts, static files, answer files (Go repo)
 
 ## Git Conventions
 
@@ -53,7 +53,6 @@ crds/                 # Custom Resource Definitions
 ├── machine.yaml
 ├── provision.yaml
 ├── boottarget.yaml
-├── diskimage.yaml
 └── responsetemplate.yaml
 templates/            # Kubernetes resources
 ├── _helpers.tpl
@@ -83,33 +82,35 @@ spec:
 
 ```
 # In files/boottarget-foo.tpl (clean Go template syntax)
-kernel http://{{ .Host }}:{{ .Port }}/iso/content/...
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
 ```
 
 ### BootTarget Naming Convention
-Create separate BootTargets for different boot configurations sharing the same DiskImage:
-- `debian-13-with-firmware` - includes `includeFirmwarePath: /initrd.gz` for firmware merging
-- `debian-13-no-firmware` - plain boot without firmware
+Create separate BootTargets for different boot configurations:
+- `debian-13-with-firmware` - downloads kernel, initrd, firmware; builds combined initrd
+- `debian-13-no-firmware` - downloads kernel and initrd only
 
 BootTarget fields:
-- `diskImageRef` (required): Reference to DiskImage resource (e.g., `debian-13`)
-- `includeFirmwarePath` (optional): Path that triggers firmware merging (see below)
-- `template`: iPXE boot template (use `.Files.Get` for clean syntax)
+- `files` (required): Array of files to download, each with `url` and optional `checksumURL`
+- `combinedFiles` (optional): Array of files built by concatenating downloaded files
+- `template` (required): iPXE boot template (use `.Files.Get` for clean syntax)
 
-### Firmware Merging
+### Combined Files (Firmware Merging)
 
-When `includeFirmwarePath` is set (e.g., `/initrd.gz`), the HTTP server merges firmware with the requested file:
+When `combinedFiles` is set, the controller builds combined files at download time by concatenating sources:
 
-1. Client requests `/iso/content/debian-13-with-firmware/mini.iso/initrd.gz`
-2. Server checks if request path matches `includeFirmwarePath`
-3. If match, serves: `initrd.gz` + `firmware.cpio.gz` concatenated
-4. If no match, serves the file as-is
+```yaml
+combinedFiles:
+  - name: initrd.gz
+    sources:
+      - initrd.gz
+      - firmware.cpio.gz
+```
 
 This follows the Debian netboot firmware method: `cat initrd.gz firmware.cpio.gz > combined.gz`
 
-The path must match exactly (with leading `/`). Examples:
-- `includeFirmwarePath: /initrd.gz` - merges firmware when `/initrd.gz` is requested
-- `includeFirmwarePath: ""` (or omitted) - no firmware merging, serves files as-is
+The combined file replaces the original when served via `/static/`. For example, requesting
+`/static/debian-13-with-firmware/initrd.gz` returns the combined initrd+firmware.
 
 ### BootTarget Template Variables
 
@@ -119,13 +120,13 @@ Available in iPXE boot templates (files/boottarget-*.tpl):
 - `{{ .MachineName }}` - full machine name (e.g., "vm-01.lan") - use for answer file URLs
 - `{{ .Hostname }}` - first part before dot (e.g., "vm-01") - use for kernel hostname=
 - `{{ .Domain }}` - everything after first dot (e.g., "lan") - use for kernel domain=
-- `{{ .BootTarget }}` - BootTarget resource name - use for ISO content paths
+- `{{ .BootTarget }}` - BootTarget resource name - use for static file paths
 
 Example iPXE template:
 ```
-kernel http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/linux
-initrd http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/initrd.gz
-imgargs linux hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/answer/{{ .MachineName }}/preseed.cfg
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/linux
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootTarget }}/initrd.gz
+imgargs linux hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/answer/{{ .ProvisionName }}/preseed.cfg
 boot
 ```
 

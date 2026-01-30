@@ -18,33 +18,35 @@ spec:
 - `mac` (required): MAC address, dash-separated
 - `machineId` (optional): systemd machine-id for /etc/machine-id (exactly 32 lowercase hex characters)
 
-### DiskImage
-Downloads and caches ISO images with checksum verification.
-```yaml
-apiVersion: isoboot.io/v1alpha1
-kind: DiskImage
-metadata:
-  name: debian-13
-spec:
-  iso: "https://..."
-  firmware: "https://..."  # optional
-```
-Status phases: Pending → Verifying → Downloading → Complete/Failed
-
 ### BootTarget
-Defines how to boot a specific OS/configuration.
+Downloads files and defines how to boot a specific OS/configuration.
 ```yaml
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
-  name: debian-13-no-firmware
+  name: debian-13-with-firmware
 spec:
-  diskImageRef: debian-13
-  includeFirmwarePath: ""  # or "/initrd.gz" to merge firmware
+  files:
+    - url: "https://deb.debian.org/.../linux"
+      checksumURL: "https://deb.debian.org/.../SHA256SUMS"
+    - url: "https://deb.debian.org/.../initrd.gz"
+      checksumURL: "https://deb.debian.org/.../SHA256SUMS"
+    - url: "https://cdimage.debian.org/.../firmware.cpio.gz"
+      checksumURL: "https://cdimage.debian.org/.../SHA256SUMS"
+  combinedFiles:
+    - name: initrd.gz
+      sources:
+        - initrd.gz
+        - firmware.cpio.gz
   template: |
     #!ipxe
     ...
 ```
+- `files` (required): Files to download directly from upstream URLs
+- `combinedFiles` (optional): Files built by concatenating downloaded files
+- `template` (required): iPXE boot template
+
+Status phases: Pending → Downloading → Complete/Failed
 
 ### Provision
 Triggers installation of a Machine using a BootTarget.
@@ -81,6 +83,5 @@ spec:
 ## Naming Conventions
 
 - Machine: FQDN format (`vm-01.lan`)
-- DiskImage: OS identifier (`debian-13`)
 - BootTarget: OS + variant (`debian-13-no-firmware`, `debian-13-with-firmware`)
 - Provision: Machine + BootTarget (`vm-01-debian-13-no-firmware`)

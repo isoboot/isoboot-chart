@@ -50,7 +50,7 @@ spec:
                 --proxy-port="{{ .Values.proxy.port }}" \
                 --controller="${CONTROLLER_ADDR}" \
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
-                --iso-path="/opt/isoboot/iso"
+                --files-path="/opt/isoboot/files"
           env:
             - name: GOCACHE
               value: /go/cache
@@ -59,8 +59,8 @@ spec:
               containerPort: {{ .Values.http.port }}
               protocol: TCP
           volumeMounts:
-            - name: iso-storage
-              mountPath: /opt/isoboot/iso
+            - name: files-storage
+              mountPath: /opt/isoboot/files
             - name: go-cache
               mountPath: /go
           resources:
@@ -78,9 +78,9 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 5
       volumes:
-        - name: iso-storage
+        - name: files-storage
           hostPath:
-            path: /opt/isoboot/iso
+            path: /opt/isoboot/files
             type: DirectoryOrCreate
         - name: go-cache
           hostPath:

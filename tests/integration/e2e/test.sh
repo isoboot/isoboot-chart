@@ -32,37 +32,17 @@ get_status() {
   kubectl get provision/"$PROVISION" -n isoboot -o jsonpath='{.status.phase}'
 }
 
-# --- Setup: mount ISO and compute reference hashes ---
+# --- Setup: compute reference hashes from downloaded files ---
 
-echo "Setup: mounting ISO and computing reference hashes"
+echo "Setup: computing reference hashes from downloaded files"
 
-ISO_PATH=$(docker exec kind-control-plane \
-  find "/opt/isoboot/iso/debian-12" -name 'mini.iso' -type f | head -1)
-[ -n "$ISO_PATH" ] || {
-  echo "mini.iso not found for debian-12"
-  docker exec kind-control-plane find /opt/isoboot/iso -type f
-  exit 1
-}
+KERNEL_SHA=$(docker exec kind-control-plane \
+  sha256sum "/opt/isoboot/files/${BOOT_TARGET}/linux" | awk '{print $1}')
+INITRD_SHA=$(docker exec kind-control-plane \
+  sha256sum "/opt/isoboot/files/${BOOT_TARGET}/initrd.gz" | awk '{print $1}')
 
-MOUNT_DIR="/tmp/iso-mount-e2e"
-
-cleanup_iso_mount() {
-  docker exec kind-control-plane umount "$MOUNT_DIR" >/dev/null 2>&1 || true
-  docker exec kind-control-plane rmdir "$MOUNT_DIR" >/dev/null 2>&1 || true
-}
-trap cleanup_iso_mount EXIT
-
-docker exec kind-control-plane mkdir -p "$MOUNT_DIR"
-docker exec kind-control-plane mount -o ro "$ISO_PATH" "$MOUNT_DIR"
-
-ISO_KERNEL_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/linux" | awk '{print $1}')
-ISO_INITRD_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/initrd.gz" | awk '{print $1}')
-
-cleanup_iso_mount
-trap - EXIT
-
-echo "  ISO kernel sha256: ${ISO_KERNEL_SHA}"
-echo "  ISO initrd sha256: ${ISO_INITRD_SHA}"
+echo "  kernel sha256: ${KERNEL_SHA}"
+echo "  initrd sha256: ${INITRD_SHA}"
 echo ""
 
 TMPDIR="/tmp/e2e-boot"
@@ -140,10 +120,10 @@ test_conditional_boot_200_in_progress() {
 
 test_kernel_in_progress() {
   curl -f -s -o "${TMPDIR}/kernel" \
-    "${BASE_URL}/iso/content/${BOOT_TARGET}/mini.iso/linux"
+    "${BASE_URL}/static/${BOOT_TARGET}/linux"
   local sha
   sha=$(sha256sum "${TMPDIR}/kernel" | awk '{print $1}')
-  if [ "$sha" != "$ISO_KERNEL_SHA" ]; then
+  if [ "$sha" != "$KERNEL_SHA" ]; then
     echo -n "(kernel sha256 mismatch: ${sha}) "
     return 1
   fi
@@ -159,10 +139,10 @@ test_kernel_in_progress() {
 
 test_initrd_in_progress() {
   curl -f -s -o "${TMPDIR}/initrd" \
-    "${BASE_URL}/iso/content/${BOOT_TARGET}/mini.iso/initrd.gz"
+    "${BASE_URL}/static/${BOOT_TARGET}/initrd.gz"
   local sha
   sha=$(sha256sum "${TMPDIR}/initrd" | awk '{print $1}')
-  if [ "$sha" != "$ISO_INITRD_SHA" ]; then
+  if [ "$sha" != "$INITRD_SHA" ]; then
     echo -n "(initrd sha256 mismatch: ${sha}) "
     return 1
   fi
@@ -235,8 +215,8 @@ run_test "conditional-boot 404 before provision" test_initial_404
 run_test "create provision and verify Pending" test_create_provision_pending
 run_test "wrong MAC 404, status still Pending" test_wrong_mac_404_still_pending
 run_test "conditional-boot 200 with ${BOOT_TARGET}, status InProgress" test_conditional_boot_200_in_progress
-run_test "kernel matches ISO, status InProgress" test_kernel_in_progress
-run_test "initrd matches ISO, status InProgress" test_initrd_in_progress
+run_test "kernel matches downloaded file, status InProgress" test_kernel_in_progress
+run_test "initrd matches downloaded file, status InProgress" test_initrd_in_progress
 run_test "preseed content correct, status InProgress" test_preseed_in_progress
 run_test "done returns 200, status Complete" test_done_complete
 run_test "conditional-boot 404 after done, status Complete" test_after_done_404_still_complete
