@@ -46,7 +46,7 @@ to verify ISO extraction produces byte-identical output.
 - [x] /dynamic/healthz returns HTTP 200
 
 ### 2.2 iPXE Boot Script
-- [x] /dynamic/boot/boot.ipxe returns HTTP 200 with #!ipxe and conditional-boot chain URL
+- [x] /static/boot.ipxe returns HTTP 200 with #!ipxe and conditional-boot chain URL
 
 ### 2.3 Conditional Boot Lifecycle
 - [x] Returns 404 when no Provision exists
