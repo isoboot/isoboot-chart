@@ -24,7 +24,7 @@ Downloads files and defines how to boot a specific OS/configuration.
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
-  name: debian-13-with-firmware
+  name: debian-13
 spec:
   files:
     - url: "https://deb.debian.org/.../linux"
@@ -34,7 +34,7 @@ spec:
     - url: "https://cdimage.debian.org/.../firmware.cpio.gz"
       checksumURL: "https://cdimage.debian.org/.../SHA256SUMS"
   combinedFiles:
-    - name: initrd.gz
+    - name: firmware-initrd.gz
       sources:
         - initrd.gz
         - firmware.cpio.gz
@@ -57,7 +57,7 @@ metadata:
   name: vm-01-debian-13
 spec:
   machineRef: vm-01.lan
-  bootTargetRef: debian-13-no-firmware
+  bootTargetRef: debian-13
   responseTemplateRef: debian-standard
   configMaps:
     - config-01
@@ -83,5 +83,5 @@ spec:
 ## Naming Conventions
 
 - Machine: FQDN format (`vm-01.lan`)
-- BootTarget: OS + variant (`debian-13-no-firmware`, `debian-13-with-firmware`)
-- Provision: Machine + BootTarget (`vm-01-debian-13-no-firmware`)
+- BootTarget: OS version (`debian-12`, `debian-13`)
+- Provision: Machine + BootTarget (`vm-01-debian-13`)
