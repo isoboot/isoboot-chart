@@ -47,6 +47,10 @@ spec:
               }
               NGINX
 
+              # Redirect nginx logs to stdout/stderr for kubectl logs
+              ln -sf /dev/stdout /var/log/nginx/access.log
+              ln -sf /dev/stderr /var/log/nginx/error.log
+
               exec nginx -g 'daemon off;'
           ports:
             - name: http
