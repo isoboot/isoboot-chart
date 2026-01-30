@@ -1,11 +1,11 @@
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
-  name: debian-12
+  name: debian-13-no-firmware
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 spec:
-  bootMediaRef: debian-12
-  useDebianFirmware: true
+  bootMediaRef: debian-13
+  useDebianFirmware: false
   template: |
 {{ .Files.Get "files/boottarget-debian-v1.tpl" | indent 4 }}

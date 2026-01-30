@@ -70,10 +70,10 @@ test_conditional_boot_no_provision() {
   fi
 }
 
-# --- Test 4: conditional-boot 200 with debian-13 ---
+# --- Test 4: conditional-boot 200 with debian-13-with-firmware ---
 
 test_conditional_boot_debian13() {
-  # Create a Provision for debian-13
+  # Create a Provision for debian-13-with-firmware
   kubectl apply -f - <<'EOF'
 apiVersion: isoboot.io/v1alpha1
 kind: Provision
@@ -82,7 +82,7 @@ metadata:
   namespace: isoboot
 spec:
   machineRef: test-boot.lab
-  bootTargetRef: debian-13
+  bootTargetRef: debian-13-with-firmware
   responseTemplateRef: test-boot-rt
 EOF
 
@@ -130,10 +130,10 @@ test_conditional_boot_after_done() {
   fi
 }
 
-# --- Test 6: conditional-boot 200 with debian-12 ---
+# --- Test 6: conditional-boot 200 with debian-12-no-firmware ---
 
 test_conditional_boot_debian12() {
-  # Create a second Provision for debian-12
+  # Create a second Provision for debian-12-no-firmware
   kubectl apply -f - <<'EOF'
 apiVersion: isoboot.io/v1alpha1
 kind: Provision
@@ -142,7 +142,7 @@ metadata:
   namespace: isoboot
 spec:
   machineRef: test-boot.lab
-  bootTargetRef: debian-12
+  bootTargetRef: debian-12-no-firmware
   responseTemplateRef: test-boot-rt
 EOF
 
@@ -169,9 +169,9 @@ EOF
 run_test "healthz returns 200" test_healthz
 run_test "boot.ipxe returns valid iPXE script" test_boot_ipxe
 run_test "conditional-boot 404 with no provision" test_conditional_boot_no_provision
-run_test "conditional-boot 200 with debian-13" test_conditional_boot_debian13
+run_test "conditional-boot 200 with debian-13-with-firmware" test_conditional_boot_debian13
 run_test "conditional-boot 404 after done" test_conditional_boot_after_done
-run_test "conditional-boot 200 with debian-12" test_conditional_boot_debian12
+run_test "conditional-boot 200 with debian-12-no-firmware" test_conditional_boot_debian12
 
 PASSED=$((TESTS - FAILURES))
 echo "boot: ${PASSED}/${TESTS} passed"
