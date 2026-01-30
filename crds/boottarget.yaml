@@ -19,6 +19,9 @@ spec:
               required:
                 - files
                 - template
+              x-kubernetes-validations:
+                - rule: "!has(self.combinedFiles) || self.combinedFiles.all(cf, !self.files.exists(f, f.url.split('/')[f.url.split('/').size() - 1] == cf.name))"
+                  message: "combinedFiles names must not conflict with downloaded file names"
               properties:
                 files:
                   type: array
