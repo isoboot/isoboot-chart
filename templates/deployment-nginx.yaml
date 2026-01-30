@@ -51,6 +51,11 @@ spec:
               ln -sf /dev/stdout /var/log/nginx/access.log
               ln -sf /dev/stderr /var/log/nginx/error.log
 
+              # Run nginx as root so it can read files created by the controller
+              # (Go's os.CreateTemp creates files with 0600 permissions).
+              # The pod already runs as root with hostNetwork.
+              sed -i 's/^user nginx;$/user root;/' /etc/nginx/nginx.conf
+
               exec nginx -g 'daemon off;'
           ports:
             - name: http
