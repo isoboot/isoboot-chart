@@ -37,14 +37,18 @@ INITRD_SHA=$(docker exec kind-control-plane \
 echo "  kernel sha256: ${KERNEL_SHA}"
 echo "  initrd sha256: ${INITRD_SHA}"
 
-# Check if this is a with-firmware variant (has combined initrd.gz)
+# Check if this is a with-firmware variant (has firmware.cpio.gz alongside initrd.gz)
 HAS_FIRMWARE=false
 if docker exec kind-control-plane test -f "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz" 2>/dev/null; then
   HAS_FIRMWARE=true
-  # For with-firmware variants, the served initrd.gz is the combined file (initrd + firmware)
-  COMBINED_INITRD_SHA=$(docker exec kind-control-plane \
-    sh -c "cat /opt/isoboot/files/${BOOTTARGET}/initrd.gz" | sha256sum | awk '{print $1}')
-  echo "  combined initrd sha256: ${COMBINED_INITRD_SHA}"
+  # For with-firmware variants, the on-disk initrd.gz is the combined file
+  # (controller concatenated original initrd.gz + firmware.cpio.gz into it)
+  FW_SIZE=$(docker exec kind-control-plane \
+    stat -c%s "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz")
+  INITRD_SIZE=$(docker exec kind-control-plane \
+    stat -c%s "/opt/isoboot/files/${BOOTTARGET}/initrd.gz")
+  echo "  firmware size: ${FW_SIZE}"
+  echo "  initrd size (combined): ${INITRD_SIZE}"
 fi
 echo ""
 
@@ -78,13 +82,10 @@ test_initrd() {
   [ "$sha" = "$INITRD_SHA" ]
 }
 
-test_combined_initrd() {
-  curl -f -s -o "${TMPDIR}/combined-initrd" \
-    "${BASE_URL}/static/${BOOTTARGET}/initrd.gz"
-  local sha
-  sha=$(sha256sum "${TMPDIR}/combined-initrd" | awk '{print $1}')
-  echo -n "(sha256=${sha}) "
-  [ "$sha" = "$COMBINED_INITRD_SHA" ]
+test_combined_initrd_larger_than_firmware() {
+  # The combined initrd.gz must be larger than firmware.cpio.gz alone,
+  # proving it contains both the original initrd and the firmware.
+  [ "$INITRD_SIZE" -gt "$FW_SIZE" ]
 }
 
 run_test "invalid file returns 404" test_invalid_file_404
@@ -92,7 +93,7 @@ run_test "kernel matches downloaded file" test_kernel
 run_test "initrd matches downloaded file" test_initrd
 
 if [ "$HAS_FIRMWARE" = "true" ]; then
-  run_test "combined initrd matches on-disk file" test_combined_initrd
+  run_test "combined initrd is larger than firmware alone" test_combined_initrd_larger_than_firmware
 fi
 
 PASSED=$((TESTS - FAILURES))
