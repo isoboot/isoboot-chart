@@ -111,8 +111,8 @@ test_conditional_boot_200_in_progress() {
     echo -n "(expected 200, got ${code}) "
     return 1
   fi
-  if ! echo "$body" | grep -q "${BOOT_TARGET}"; then
-    echo -n "(missing ${BOOT_TARGET} in body) "
+  if ! echo "$body" | grep -q "${BOOT_MEDIA}"; then
+    echo -n "(missing ${BOOT_MEDIA} in body) "
     return 1
   fi
   kubectl wait --for=jsonpath='{.status.phase}'=InProgress \
