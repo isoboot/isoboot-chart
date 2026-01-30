@@ -114,10 +114,10 @@ spec:
         - name: Status
           type: string
           jsonPath: .status.phase
-        - name: Files
-          type: integer
-          jsonPath: .spec.files
-          description: Number of files to download
+        - name: Message
+          type: string
+          jsonPath: .status.message
+          priority: 1
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp

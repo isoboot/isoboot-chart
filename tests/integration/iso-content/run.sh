@@ -8,7 +8,7 @@ fi
 
 HOST_IP=$1
 DIR=$(cd "$(dirname "$0")" && pwd)
-BOOT_TARGETS="debian-12-no-firmware debian-13-no-firmware"
+BOOT_TARGETS="debian-12-no-firmware debian-13-no-firmware debian-13-with-firmware"
 GROUP_FAILURES=0
 
 for BT in $BOOT_TARGETS; do

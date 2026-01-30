@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "isoboot.fullname" . }}-nginx
+  labels:
+    {{- include "isoboot.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "isoboot.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nginx
+  template:
+    metadata:
+      labels:
+        {{- include "isoboot.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nginx
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: nginx
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache nginx
+
+              cat > /etc/nginx/http.d/default.conf <<NGINX
+              server {
+                  listen {{ .Values.http.port }};
+
+                  location /static/ {
+                      alias /opt/isoboot/files/;
+                      autoindex off;
+                  }
+
+                  location / {
+                      proxy_pass http://127.0.0.1:{{ .Values.http.listenPort }};
+                      proxy_set_header Host \$host;
+                      proxy_set_header X-Real-IP \$remote_addr;
+                  }
+              }
+              NGINX
+
+              exec nginx -g 'daemon off;'
+          ports:
+            - name: http
+              containerPort: {{ .Values.http.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: files-storage
+              mountPath: /opt/isoboot/files
+              readOnly: true
+          resources:
+            {{- toYaml .Values.nginx.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: files-storage
+          hostPath:
+            path: /opt/isoboot/files
+            type: DirectoryOrCreate

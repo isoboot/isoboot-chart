@@ -41,9 +41,10 @@ echo "  initrd sha256: ${INITRD_SHA}"
 HAS_FIRMWARE=false
 if docker exec kind-control-plane test -f "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz" 2>/dev/null; then
   HAS_FIRMWARE=true
-  FW_SHA=$(docker exec kind-control-plane \
-    sha256sum "/opt/isoboot/files/${BOOTTARGET}/firmware.cpio.gz" | awk '{print $1}')
-  echo "  firmware sha256: ${FW_SHA}"
+  # For with-firmware variants, the served initrd.gz is the combined file (initrd + firmware)
+  COMBINED_INITRD_SHA=$(docker exec kind-control-plane \
+    sh -c "cat /opt/isoboot/files/${BOOTTARGET}/initrd.gz" | sha256sum | awk '{print $1}')
+  echo "  combined initrd sha256: ${COMBINED_INITRD_SHA}"
 fi
 echo ""
 
@@ -77,9 +78,22 @@ test_initrd() {
   [ "$sha" = "$INITRD_SHA" ]
 }
 
+test_combined_initrd() {
+  curl -f -s -o "${TMPDIR}/combined-initrd" \
+    "${BASE_URL}/static/${BOOTTARGET}/initrd.gz"
+  local sha
+  sha=$(sha256sum "${TMPDIR}/combined-initrd" | awk '{print $1}')
+  echo -n "(sha256=${sha}) "
+  [ "$sha" = "$COMBINED_INITRD_SHA" ]
+}
+
 run_test "invalid file returns 404" test_invalid_file_404
 run_test "kernel matches downloaded file" test_kernel
 run_test "initrd matches downloaded file" test_initrd
+
+if [ "$HAS_FIRMWARE" = "true" ]; then
+  run_test "combined initrd matches on-disk file" test_combined_initrd
+fi
 
 PASSED=$((TESTS - FAILURES))
 echo "static-content/${BOOTTARGET}: ${PASSED}/${TESTS} passed"

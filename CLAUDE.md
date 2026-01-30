@@ -35,6 +35,8 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 - **Pod with hostNetwork**: Uses the host's network stack to bind to DHCP/TFTP ports
 - **dnsmasq**: Runs in proxy DHCP mode - responds to PXE requests without handing out IP addresses
 - **iPXE**: Boot files (undionly.kpxe for BIOS, ipxe.efi for UEFI) served via TFTP
+- **nginx** (port 8080): External-facing reverse proxy. Serves `/static/` files from disk, proxies `/boot/`, `/answer/`, `/healthz` to the Go server
+- **isoboot-http** (127.0.0.1:8082): Go HTTP server, localhost-only. Handles boot scripts, answer files, health checks. Nginx forwards requests to it
 
 ## Key Design Decisions
 
@@ -57,7 +59,8 @@ crds/                 # Custom Resource Definitions
 templates/            # Kubernetes resources
 ├── _helpers.tpl
 ├── deployment-controller.yaml  # Deployment (auto-restart)
-├── deployment-http.yaml        # Deployment (hostNetwork)
+├── deployment-http.yaml        # Deployment (localhost:8082, Go server)
+├── deployment-nginx.yaml       # Deployment (hostNetwork:8080, reverse proxy)
 ├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
 ├── boottarget-*.yaml

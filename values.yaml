@@ -4,7 +4,8 @@
 
 # HTTP server for boot files (no k8s access, talks to controller via gRPC)
 http:
-  port: 8080
+  port: 8080        # External port (nginx listens here, used in templates)
+  listenPort: 8082  # Internal port (Go server, localhost only)
   commit: "3416a1c"  # Git commit to install
   resources:
     limits:
@@ -43,6 +44,16 @@ proxy:
     requests:
       memory: "256Mi"
       cpu: "100m"
+
+# Nginx reverse proxy (external-facing on port 8080)
+nginx:
+  resources:
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
 
 resources:
   limits:

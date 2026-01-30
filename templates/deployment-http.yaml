@@ -42,46 +42,38 @@ spec:
               echo "Installing isoboot-http..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
 
-              echo "Starting isoboot-http on ${HOST_IP}:${HTTP_PORT}..."
+              echo "Starting isoboot-http on 127.0.0.1:{{ .Values.http.listenPort }} (advertised as ${HOST_IP}:${HTTP_PORT})..."
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."
               exec isoboot-http \
                 --host="${HOST_IP}" \
                 --port="${HTTP_PORT}" \
+                --listen-port="{{ .Values.http.listenPort }}" \
                 --proxy-port="{{ .Values.proxy.port }}" \
                 --controller="${CONTROLLER_ADDR}" \
-                --templates-configmap="{{ include "isoboot.fullname" . }}-templates" \
-                --files-path="/opt/isoboot/files"
+                --templates-configmap="{{ include "isoboot.fullname" . }}-templates"
           env:
             - name: GOCACHE
               value: /go/cache
           ports:
             - name: http
-              containerPort: {{ .Values.http.port }}
+              containerPort: {{ .Values.http.listenPort }}
               protocol: TCP
           volumeMounts:
-            - name: files-storage
-              mountPath: /opt/isoboot/files
             - name: go-cache
               mountPath: /go
           resources:
             {{- toYaml .Values.http.resources | nindent 12 }}
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: {{ .Values.http.port }}
+            tcpSocket:
+              port: {{ .Values.http.listenPort }}
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: {{ .Values.http.port }}
+            tcpSocket:
+              port: {{ .Values.http.listenPort }}
             initialDelaySeconds: 10
             periodSeconds: 5
       volumes:
-        - name: files-storage
-          hostPath:
-            path: /opt/isoboot/files
-            type: DirectoryOrCreate
         - name: go-cache
           hostPath:
             path: /var/cache/isoboot/go/http
