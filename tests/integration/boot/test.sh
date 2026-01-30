@@ -107,12 +107,12 @@ EOF
 # --- Test 5: conditional-boot 404 after done ---
 
 test_conditional_boot_after_done() {
-  # Mark the provision as complete via /boot/done
+  # Mark the provision as complete via /dynamic/boot/done
   local done_code
   done_code=$(curl -s -o /dev/null -w '%{http_code}' \
     "${BASE_URL}/dynamic/boot/done?mac=${MAC}")
   if [ "$done_code" != "200" ]; then
-    echo -n "(/boot/done returned ${done_code}, expected 200) "
+    echo -n "(/dynamic/boot/done returned ${done_code}, expected 200) "
     return 1
   fi
 

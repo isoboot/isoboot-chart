@@ -177,14 +177,14 @@ test_preseed_in_progress() {
   fi
 }
 
-# --- Test 8: /boot/done, status Complete ---
+# --- Test 8: /dynamic/boot/done, status Complete ---
 
 test_done_complete() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
     "${BASE_URL}/dynamic/boot/done?mac=${MAC}")
   if [ "$code" != "200" ]; then
-    echo -n "(/boot/done returned ${code}, expected 200) "
+    echo -n "(/dynamic/boot/done returned ${code}, expected 200) "
     return 1
   fi
   kubectl wait --for=jsonpath='{.status.phase}'=Complete \
