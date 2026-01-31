@@ -39,6 +39,12 @@ jobs:
             --set interface=${{ env.INTERFACE }} \
             --set proxy.cacheSize=100
 
+      - name: Check node memory
+        run: |
+          docker exec kind-control-plane cat /proc/meminfo | head -5
+          echo "---"
+          docker exec kind-control-plane free -m
+
       - name: Scale down non-squid pods
         run: |
           kubectl scale deployment isoboot-controller isoboot-http isoboot-nginx \

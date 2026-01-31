@@ -50,6 +50,8 @@ spec:
               cat > /etc/squid/squid.conf << SQUID_EOF
               http_port {{ .Values.proxy.port }}
               cache deny all
+              cache_mem 8 MB
+              memory_pools off
               access_log none
               http_access allow all
               SQUID_EOF
