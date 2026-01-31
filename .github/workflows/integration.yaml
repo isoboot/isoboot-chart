@@ -52,7 +52,8 @@ jobs:
       - name: Helm install
         run: |
           helm install isoboot . -n isoboot --create-namespace \
-            --set interface=${{ env.INTERFACE }}
+            --set interface=${{ env.INTERFACE }} \
+            --set proxy.enabled=false
 
       - name: Wait for pods
         run: |
