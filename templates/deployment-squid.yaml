@@ -50,6 +50,7 @@ spec:
 
               echo "Generating squid config..."
               cat > /etc/squid/squid.conf << SQUID_EOF
+              workers 1
               http_port {{ .Values.proxy.port }}
               cache deny all
               cache_mem 8 MB
