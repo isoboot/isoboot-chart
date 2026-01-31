@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 spec:
-  bootMediaRef: debian-12
-  useFirmware: true
+  diskImageRef: debian-12
+  includeFirmwarePath: /initrd.gz
   template: |
 {{ .Files.Get "files/boottarget-debian-v1.tpl" | indent 4 }}

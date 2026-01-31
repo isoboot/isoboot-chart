@@ -17,28 +17,22 @@ spec:
             spec:
               type: object
               required:
-                - bootMediaRef
+                - diskImageRef
                 - template
               properties:
-                bootMediaRef:
+                diskImageRef:
                   type: string
-                  minLength: 1
-                  description: Reference to a BootMedia resource name
-                useFirmware:
-                  type: boolean
-                  default: false
-                  description: Whether to use the firmware-combined initrd (with-firmware/ subdirectory)
+                  description: Reference to DiskImage resource
+                includeFirmwarePath:
+                  type: string
+                  description: Path to the file that should be merged with firmware (e.g., /initrd.gz). When a request matches this path, the HTTP server concatenates the file with firmware.cpio.gz before serving.
                 template:
                   type: string
-                  minLength: 1
                   description: iPXE boot template content
       additionalPrinterColumns:
-        - name: BootMedia
+        - name: DiskImage
           type: string
-          jsonPath: .spec.bootMediaRef
-        - name: Firmware
-          type: boolean
-          jsonPath: .spec.useFirmware
+          jsonPath: .spec.diskImageRef
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp
