@@ -2,12 +2,16 @@
 set -euo pipefail
 
 if [ "$#" -lt 2 ] || [ -z "${1:-}" ] || [ -z "${2:-}" ]; then
-  echo "Usage: $0 <HOST_IP> <DISKIMAGE>" >&2
+  echo "Usage: $0 <HOST_IP> <BOOTMEDIA> [--expect-firmware]" >&2
   exit 1
 fi
 
 HOST_IP=$1
-DISKIMAGE=$2
+BOOTMEDIA=$2
+EXPECT_FIRMWARE=false
+if [ "${3:-}" = "--expect-firmware" ]; then
+  EXPECT_FIRMWARE=true
+fi
 BASE_URL="http://${HOST_IP}:8080"
 FAILURES=0
 TESTS=0
@@ -25,118 +29,113 @@ run_test() {
   fi
 }
 
-# --- Setup: mount ISO and compute reference hashes ---
+# --- Setup: compute reference hashes from files on disk ---
 
-echo "Setup: mounting ISO and computing reference hashes"
+echo "Setup: computing reference hashes from downloaded files"
 
-ISO_PATH=$(docker exec kind-control-plane \
-  find "/opt/isoboot/iso/${DISKIMAGE}" -name 'mini.iso' -type f | head -1)
-[ -n "$ISO_PATH" ] || {
-  echo "mini.iso not found for ${DISKIMAGE}"
-  docker exec kind-control-plane find /opt/isoboot/iso -type f
+# Kernel is always at top level
+KERNEL_SHA=$(docker exec kind-control-plane \
+  sha256sum "/opt/isoboot/files/${BOOTMEDIA}/linux" | awk '{print $1}')
+
+echo "  kernel sha256: ${KERNEL_SHA}"
+
+# Check for firmware (determines directory layout)
+HAS_FIRMWARE=false
+if docker exec kind-control-plane test -d "/opt/isoboot/files/${BOOTMEDIA}/no-firmware" 2>/dev/null; then
+  HAS_FIRMWARE=true
+  # With firmware: initrd in subdirectories
+  INITRD_NO_FW_SHA=$(docker exec kind-control-plane \
+    sha256sum "/opt/isoboot/files/${BOOTMEDIA}/no-firmware/initrd.gz" | awk '{print $1}')
+  INITRD_WITH_FW_SHA=$(docker exec kind-control-plane \
+    sha256sum "/opt/isoboot/files/${BOOTMEDIA}/with-firmware/initrd.gz" | awk '{print $1}')
+  INITRD_NO_FW_SIZE=$(docker exec kind-control-plane \
+    stat -c%s "/opt/isoboot/files/${BOOTMEDIA}/no-firmware/initrd.gz")
+  INITRD_WITH_FW_SIZE=$(docker exec kind-control-plane \
+    stat -c%s "/opt/isoboot/files/${BOOTMEDIA}/with-firmware/initrd.gz")
+  echo "  initrd (no-firmware) sha256: ${INITRD_NO_FW_SHA}"
+  echo "  initrd (with-firmware) sha256: ${INITRD_WITH_FW_SHA}"
+  echo "  initrd (no-firmware) size: ${INITRD_NO_FW_SIZE}"
+  echo "  initrd (with-firmware) size: ${INITRD_WITH_FW_SIZE}"
+elif [ "$EXPECT_FIRMWARE" = "true" ]; then
+  echo "FAIL: firmware expected but no-firmware/ directory not found for ${BOOTMEDIA}"
   exit 1
-}
-
-FW_PATH=$(docker exec kind-control-plane \
-  find "/opt/isoboot/iso/${DISKIMAGE}" -name 'firmware.cpio.gz' -type f | head -1)
-[ -n "$FW_PATH" ] || {
-  echo "firmware.cpio.gz not found for ${DISKIMAGE}"
-  docker exec kind-control-plane find /opt/isoboot/iso -type f
-  exit 1
-}
-
-MOUNT_DIR="/tmp/iso-mount-${DISKIMAGE}"
-
-cleanup_iso_mount() {
-  docker exec kind-control-plane umount "$MOUNT_DIR" >/dev/null 2>&1 || true
-  docker exec kind-control-plane rmdir "$MOUNT_DIR" >/dev/null 2>&1 || true
-}
-trap cleanup_iso_mount EXIT
-
-docker exec kind-control-plane mkdir -p "$MOUNT_DIR"
-docker exec kind-control-plane mount -o ro "$ISO_PATH" "$MOUNT_DIR"
-
-ISO_KERNEL_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/linux" | awk '{print $1}')
-ISO_INITRD_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/initrd.gz" | awk '{print $1}')
-MERGED_INITRD_SHA=$(docker exec kind-control-plane \
-  sh -c "cat ${MOUNT_DIR}/initrd.gz ${FW_PATH} | sha256sum" | awk '{print $1}')
-
-cleanup_iso_mount
-trap - EXIT
-
-echo "  ISO kernel sha256:    ${ISO_KERNEL_SHA}"
-echo "  ISO initrd sha256:    ${ISO_INITRD_SHA}"
-echo "  Merged initrd sha256: ${MERGED_INITRD_SHA}"
+else
+  # No firmware: initrd at top level
+  INITRD_SHA=$(docker exec kind-control-plane \
+    sha256sum "/opt/isoboot/files/${BOOTMEDIA}/initrd.gz" | awk '{print $1}')
+  echo "  initrd sha256: ${INITRD_SHA}"
+fi
 echo ""
 
-# --- Tests ---
-
-TMPDIR="/tmp/iso-content-${DISKIMAGE}"
+TMPDIR="/tmp/static-content-${BOOTMEDIA}"
 mkdir -p "$TMPDIR"
+
+# --- Tests ---
 
 test_invalid_file_404() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/iso/content/${DISKIMAGE}-no-firmware/mini.iso/nonexistent")
+    "${BASE_URL}/static/${BOOTMEDIA}/nonexistent")
   [ "$code" = "404" ]
 }
 
-test_kernel_no_firmware() {
-  curl -f -s -o "${TMPDIR}/kernel-nfw" \
-    "${BASE_URL}/iso/content/${DISKIMAGE}-no-firmware/mini.iso/linux"
+test_kernel() {
+  curl -f -s -o "${TMPDIR}/kernel" \
+    "${BASE_URL}/static/${BOOTMEDIA}/linux"
   local sha
-  sha=$(sha256sum "${TMPDIR}/kernel-nfw" | awk '{print $1}')
+  sha=$(sha256sum "${TMPDIR}/kernel" | awk '{print $1}')
   echo -n "(sha256=${sha}) "
-  [ "$sha" = "$ISO_KERNEL_SHA" ]
-}
-
-test_kernel_with_firmware() {
-  curl -f -s -o "${TMPDIR}/kernel-wfw" \
-    "${BASE_URL}/iso/content/${DISKIMAGE}-with-firmware/mini.iso/linux"
-  local sha
-  sha=$(sha256sum "${TMPDIR}/kernel-wfw" | awk '{print $1}')
-  echo -n "(sha256=${sha}) "
-  [ "$sha" = "$ISO_KERNEL_SHA" ]
+  [ "$sha" = "$KERNEL_SHA" ]
 }
 
 test_initrd_no_firmware() {
-  curl -f -s -o "${TMPDIR}/initrd-nfw" \
-    "${BASE_URL}/iso/content/${DISKIMAGE}-no-firmware/mini.iso/initrd.gz"
+  curl -f -s -o "${TMPDIR}/initrd-no-fw" \
+    "${BASE_URL}/static/${BOOTMEDIA}/no-firmware/initrd.gz"
   local sha
-  sha=$(sha256sum "${TMPDIR}/initrd-nfw" | awk '{print $1}')
+  sha=$(sha256sum "${TMPDIR}/initrd-no-fw" | awk '{print $1}')
   echo -n "(sha256=${sha}) "
-  [ "$sha" = "$ISO_INITRD_SHA" ]
+  [ "$sha" = "$INITRD_NO_FW_SHA" ]
 }
 
-test_initrd_with_firmware_differs() {
-  curl -f -s -o "${TMPDIR}/initrd-wfw" \
-    "${BASE_URL}/iso/content/${DISKIMAGE}-with-firmware/mini.iso/initrd.gz"
+test_initrd_with_firmware() {
+  curl -f -s -o "${TMPDIR}/initrd-with-fw" \
+    "${BASE_URL}/static/${BOOTMEDIA}/with-firmware/initrd.gz"
   local sha
-  sha=$(sha256sum "${TMPDIR}/initrd-wfw" | awk '{print $1}')
+  sha=$(sha256sum "${TMPDIR}/initrd-with-fw" | awk '{print $1}')
   echo -n "(sha256=${sha}) "
-  [ "$sha" != "$ISO_INITRD_SHA" ]
+  [ "$sha" = "$INITRD_WITH_FW_SHA" ]
 }
 
-test_initrd_with_firmware_matches_merged() {
-  curl -f -s -o "${TMPDIR}/initrd-wfw-merged" \
-    "${BASE_URL}/iso/content/${DISKIMAGE}-with-firmware/mini.iso/initrd.gz"
+test_with_firmware_larger_than_no_firmware() {
+  # with-firmware initrd must be larger than no-firmware initrd,
+  # proving firmware was concatenated.
+  [ "$INITRD_WITH_FW_SIZE" -gt "$INITRD_NO_FW_SIZE" ]
+}
+
+test_initrd_flat() {
+  curl -f -s -o "${TMPDIR}/initrd" \
+    "${BASE_URL}/static/${BOOTMEDIA}/initrd.gz"
   local sha
-  sha=$(sha256sum "${TMPDIR}/initrd-wfw-merged" | awk '{print $1}')
-  echo -n "(sha256=${sha} expected=${MERGED_INITRD_SHA}) "
-  [ "$sha" = "$MERGED_INITRD_SHA" ]
+  sha=$(sha256sum "${TMPDIR}/initrd" | awk '{print $1}')
+  echo -n "(sha256=${sha}) "
+  [ "$sha" = "$INITRD_SHA" ]
 }
 
 run_test "invalid file returns 404" test_invalid_file_404
-run_test "kernel no-firmware matches ISO" test_kernel_no_firmware
-run_test "kernel with-firmware matches ISO" test_kernel_with_firmware
-run_test "initrd no-firmware matches ISO" test_initrd_no_firmware
-run_test "initrd with-firmware differs from raw ISO" test_initrd_with_firmware_differs
-run_test "initrd with-firmware matches initrd+firmware.cpio.gz" test_initrd_with_firmware_matches_merged
+run_test "kernel matches downloaded file" test_kernel
+
+if [ "$HAS_FIRMWARE" = "true" ]; then
+  run_test "initrd (no-firmware) matches downloaded file" test_initrd_no_firmware
+  run_test "initrd (with-firmware) matches downloaded file" test_initrd_with_firmware
+  run_test "with-firmware initrd is larger than no-firmware" test_with_firmware_larger_than_no_firmware
+else
+  run_test "initrd matches downloaded file" test_initrd_flat
+fi
 
 PASSED=$((TESTS - FAILURES))
-echo "iso-content/${DISKIMAGE}: ${PASSED}/${TESTS} passed"
+echo "static-content/${BOOTMEDIA}: ${PASSED}/${TESTS} passed"
 
 # Write machine-readable results for the wrapper
-echo "${PASSED} ${TESTS}" > "/tmp/iso-content-${DISKIMAGE}.results"
+echo "${PASSED} ${TESTS}" > "/tmp/static-content-${BOOTMEDIA}.results"
 
 [ "$FAILURES" -eq 0 ] || exit 1

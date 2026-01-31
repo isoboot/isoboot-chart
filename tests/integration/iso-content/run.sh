@@ -8,15 +8,18 @@ fi
 
 HOST_IP=$1
 DIR=$(cd "$(dirname "$0")" && pwd)
-DISK_IMAGES="debian-12 debian-13"
+BOOT_MEDIAS="debian-12 debian-13"
 GROUP_FAILURES=0
 
-for DISKIMAGE in $DISK_IMAGES; do
-  echo "=== iso-content: ${DISKIMAGE} ==="
+for BM in $BOOT_MEDIAS; do
+  echo "=== static-content: ${BM} ==="
   echo ""
 
+  # All BootMedia resources include firmware
+  EXTRA_ARGS="--expect-firmware"
+
   set +e
-  "$DIR/test.sh" "$HOST_IP" "$DISKIMAGE"
+  "$DIR/test.sh" "$HOST_IP" "$BM" $EXTRA_ARGS
   rc=$?
   set -e
 
@@ -31,8 +34,8 @@ done
 TOTAL_PASSED=0
 TOTAL_TESTS=0
 
-for DISKIMAGE in $DISK_IMAGES; do
-  results="/tmp/iso-content-${DISKIMAGE}.results"
+for BM in $BOOT_MEDIAS; do
+  results="/tmp/static-content-${BM}.results"
   if [ -f "$results" ]; then
     read -r passed tests < "$results"
     TOTAL_PASSED=$((TOTAL_PASSED + passed))
@@ -41,15 +44,15 @@ for DISKIMAGE in $DISK_IMAGES; do
 done
 
 echo "=== Summary ==="
-for DISKIMAGE in $DISK_IMAGES; do
-  results="/tmp/iso-content-${DISKIMAGE}.results"
+for BM in $BOOT_MEDIAS; do
+  results="/tmp/static-content-${BM}.results"
   if [ -f "$results" ]; then
     read -r passed tests < "$results"
-    echo "  iso-content/${DISKIMAGE}: ${passed}/${tests} passed"
+    echo "  static-content/${BM}: ${passed}/${tests} passed"
   else
-    echo "  iso-content/${DISKIMAGE}: FAILED (no results)"
+    echo "  static-content/${BM}: FAILED (no results)"
   fi
 done
-echo "  iso-content: ${TOTAL_PASSED}/${TOTAL_TESTS} passed"
+echo "  static-content: ${TOTAL_PASSED}/${TOTAL_TESTS} passed"
 
 [ "$GROUP_FAILURES" -eq 0 ] || exit 1
