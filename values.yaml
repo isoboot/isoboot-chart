@@ -39,10 +39,10 @@ proxy:
   cacheSize: 10000  # MB (~10GB)
   resources:
     limits:
-      memory: "1Gi"
+      memory: "256Mi"
       cpu: "500m"
     requests:
-      memory: "256Mi"
+      memory: "128Mi"
       cpu: "100m"
 
 # Nginx reverse proxy (external-facing on port 8080)
