@@ -4,9 +4,8 @@
 
 # HTTP server for boot files (no k8s access, talks to controller via gRPC)
 http:
-  port: 8080        # External port (nginx listens here, used in templates)
-  listenPort: 80    # Internal port (Go server, behind nginx)
-  commit: "aa6aba2"  # Git commit to install
+  port: 8080
+  commit: "4f47b04"  # Git commit to install
   resources:
     limits:
       memory: "512Mi"
@@ -17,7 +16,7 @@ http:
 
 # Controller (manages provisions, talks to k8s API)
 controller:
-  commit: "aa6aba2"  # Git commit to install
+  commit: "4f47b04"  # Git commit to install
   resources:
     limits:
       memory: "512Mi"
@@ -44,16 +43,6 @@ proxy:
     requests:
       memory: "256Mi"
       cpu: "100m"
-
-# Nginx reverse proxy (external-facing on port 8080)
-nginx:
-  resources:
-    limits:
-      memory: "128Mi"
-      cpu: "200m"
-    requests:
-      memory: "64Mi"
-      cpu: "50m"
 
 resources:
   limits:

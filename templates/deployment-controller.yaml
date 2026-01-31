@@ -38,7 +38,7 @@ spec:
               exec isoboot-controller \
                 --port="8081" \
                 --namespace="{{ .Release.Namespace }}" \
-                --files-path="/opt/isoboot/files"
+                --iso-path="/opt/isoboot/iso"
           env:
             - name: POD_NAMESPACE
               valueFrom:
@@ -53,8 +53,8 @@ spec:
           volumeMounts:
             - name: go-cache
               mountPath: /go
-            - name: files-storage
-              mountPath: /opt/isoboot/files
+            - name: iso-storage
+              mountPath: /opt/isoboot/iso
           resources:
             {{- toYaml .Values.controller.resources | nindent 12 }}
           livenessProbe:
@@ -72,9 +72,9 @@ spec:
           hostPath:
             path: /var/cache/isoboot/go/controller
             type: DirectoryOrCreate
-        - name: files-storage
+        - name: iso-storage
           hostPath:
-            path: /opt/isoboot/files
+            path: /opt/isoboot/iso
             type: DirectoryOrCreate
 ---
 apiVersion: v1

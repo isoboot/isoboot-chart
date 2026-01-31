@@ -27,9 +27,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v5-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v4-${{ hashFiles('values.yaml') }}
           restore-keys: |
-            isoboot-cache-v5-
+            isoboot-cache-v4-
 
       - name: Load cache into kind node
         if: steps.cache-restore.outputs.cache-hit == 'true'
@@ -37,6 +37,34 @@ jobs:
           docker exec kind-control-plane mkdir -p /var/cache/isoboot/go
           cd /tmp/isoboot-cache && tar cf - . \
             | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
+
+      - name: Restore Debian 12 netboot cache
+        id: deb12-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/deb12-netboot
+          key: deb12-netboot-v2-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
+
+      - name: Load Debian 12 netboot into kind node
+        if: steps.deb12-cache-restore.outputs.cache-hit == 'true'
+        run: |
+          docker exec kind-control-plane mkdir -p /opt/isoboot/iso/debian-12
+          cd /tmp/deb12-netboot && tar cf - . \
+            | docker exec -i kind-control-plane tar xf - -C /opt/isoboot/iso/debian-12
+
+      - name: Restore Debian 13 netboot cache
+        id: deb13-cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/deb13-netboot
+          key: deb13-netboot-v1-${{ hashFiles('templates/diskimage-debian-13.yaml') }}
+
+      - name: Load Debian 13 netboot into kind node
+        if: steps.deb13-cache-restore.outputs.cache-hit == 'true'
+        run: |
+          docker exec kind-control-plane mkdir -p /opt/isoboot/iso/debian-13
+          cd /tmp/deb13-netboot && tar cf - . \
+            | docker exec -i kind-control-plane tar xf - -C /opt/isoboot/iso/debian-13
 
       - name: Detect network interface
         run: |
@@ -52,26 +80,17 @@ jobs:
       - name: Helm install
         run: |
           helm install isoboot . -n isoboot --create-namespace \
-            --set interface=${{ env.INTERFACE }} \
-            --set proxy.enabled=false
+            --set interface=${{ env.INTERFACE }}
 
       - name: Wait for pods
         run: |
           kubectl wait --for=condition=ready pod --all \
-            -n isoboot --timeout=900s
+            -n isoboot --timeout=600s
 
-      - name: Apply test fixtures
-        run: |
-          kubectl apply -f ./tests/integration/iso-compare/fixtures.yaml
-          kubectl apply -f ./tests/integration/boot/fixtures.yaml
-          kubectl apply -f ./tests/integration/e2e/fixtures.yaml
-
-      - name: Wait for BootSource
+      - name: Wait for DiskImages
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
-            bootsource/debian-12 \
-            bootsource/debian-13 \
-            bootsource/debian-13-iso \
+            diskimage/debian-12 diskimage/debian-13 \
             -n isoboot --timeout=600s
 
       - name: Get host IP
@@ -86,17 +105,8 @@ jobs:
           echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
           echo "Host IP: $HOST_IP"
 
-      - name: Test static content serving
+      - name: Test ISO content serving
         run: ./tests/integration/iso-content/run.sh "$HOST_IP"
-
-      - name: Test ISO extraction matches direct download
-        run: ./tests/integration/iso-compare/test.sh "$HOST_IP"
-
-      - name: Test boot endpoints
-        run: ./tests/integration/boot/test.sh "$HOST_IP"
-
-      - name: Test e2e provisioning flow
-        run: ./tests/integration/e2e/test.sh "$HOST_IP"
 
       - name: Show pod status
         if: always()
@@ -124,18 +134,64 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v5-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v4-${{ hashFiles('values.yaml') }}
+
+      - name: Save Debian 12 netboot from kind node
+        if: always() && steps.deb12-cache-restore.outputs.cache-hit != 'true'
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping"
+            exit 0
+          fi
+          if docker exec kind-control-plane test -f /opt/isoboot/iso/debian-12/mini.iso; then
+            sudo rm -rf /tmp/deb12-netboot
+            mkdir -p /tmp/deb12-netboot
+            docker exec kind-control-plane tar cf - -C /opt/isoboot/iso/debian-12 . \
+              | tar xf - -C /tmp/deb12-netboot
+          else
+            echo "mini.iso not found, skipping"
+          fi
+
+      - name: Save Debian 12 netboot cache
+        if: always() && steps.deb12-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/deb12-netboot
+          key: deb12-netboot-v2-${{ hashFiles('templates/diskimage-debian-12.yaml') }}
+
+      - name: Save Debian 13 netboot from kind node
+        if: always() && steps.deb13-cache-restore.outputs.cache-hit != 'true'
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping"
+            exit 0
+          fi
+          if docker exec kind-control-plane test -f /opt/isoboot/iso/debian-13/mini.iso; then
+            sudo rm -rf /tmp/deb13-netboot
+            mkdir -p /tmp/deb13-netboot
+            docker exec kind-control-plane tar cf - -C /opt/isoboot/iso/debian-13 . \
+              | tar xf - -C /tmp/deb13-netboot
+          else
+            echo "mini.iso not found for debian-13, skipping"
+          fi
+
+      - name: Save Debian 13 netboot cache
+        if: always() && steps.deb13-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/deb13-netboot
+          key: deb13-netboot-v1-${{ hashFiles('templates/diskimage-debian-13.yaml') }}
 
       - name: Show logs on failure
         if: failure()
         run: |
           echo "=== CRD Status ==="
-          kubectl get bootsource,provision,machine,boottarget,responsetemplate \
+          kubectl get diskimage,provision,machine,boottarget,responsetemplate \
             -n isoboot -o wide 2>/dev/null || true
           echo ""
-          echo "=== Files storage ==="
+          echo "=== ISO storage ==="
           docker exec kind-control-plane \
-            find /opt/isoboot/files -type f -ls 2>/dev/null || true
+            find /opt/isoboot/iso -type f -ls 2>/dev/null || true
           echo ""
           echo "=== Pod Logs ==="
           for pod in $(kubectl get pods -n isoboot -o name); do

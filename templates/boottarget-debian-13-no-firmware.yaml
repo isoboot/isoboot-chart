@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 spec:
-  bootSourceRef: debian-13
-  useFirmware: false
+  diskImageRef: debian-13
   template: |
 {{ .Files.Get "files/boottarget-debian-v1.tpl" | indent 4 }}

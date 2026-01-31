@@ -18,62 +18,33 @@ spec:
 - `mac` (required): MAC address, dash-separated
 - `machineId` (optional): systemd machine-id for /etc/machine-id (exactly 32 lowercase hex characters)
 
-### BootSource
-Downloads and caches boot files (kernel, initrd, firmware).
+### DiskImage
+Downloads and caches ISO images with checksum verification.
 ```yaml
 apiVersion: isoboot.io/v1alpha1
-kind: BootSource
+kind: DiskImage
 metadata:
-  name: debian-12
+  name: debian-13
 spec:
-  kernel:
-    url: "https://deb.debian.org/.../linux"
-    checksumURL: "https://deb.debian.org/.../SHA256SUMS"
-  initrd:
-    url: "https://deb.debian.org/.../initrd.gz"
-    checksumURL: "https://deb.debian.org/.../SHA256SUMS"
-  firmware:
-    url: "https://cdimage.debian.org/.../firmware.cpio.gz"
-    checksumURL: "https://cdimage.debian.org/.../SHA256SUMS"
+  iso: "https://..."
+  firmware: "https://..."  # optional
 ```
-- Either (`kernel` + `initrd`) or `iso` (with `iso.kernel`/`iso.initrd` extraction paths) — not both
-- `firmware` is always optional
-- Status phases: Pending → Downloading → Complete/Failed
-
-Directory layout without firmware (flat):
-```
-debian-12/
-  linux       ← kernel
-  initrd.gz   ← initrd
-```
-
-Directory layout with firmware (subdirectories):
-```
-debian-12/
-  linux                   ← kernel (always top-level)
-  no-firmware/
-    initrd.gz             ← original initrd
-  with-firmware/
-    initrd.gz             ← initrd + firmware.cpio.gz concatenated
-```
+Status phases: Pending → Verifying → Downloading → Complete/Failed
 
 ### BootTarget
-Defines how to boot a specific OS/configuration, referencing a BootSource.
+Defines how to boot a specific OS/configuration.
 ```yaml
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
-  name: debian-12
+  name: debian-13-no-firmware
 spec:
-  bootSourceRef: debian-12
-  useFirmware: true
+  diskImageRef: debian-13
+  includeFirmwarePath: ""  # or "/initrd.gz" to merge firmware
   template: |
     #!ipxe
     ...
 ```
-- `bootSourceRef` (required): Reference to BootSource resource
-- `useFirmware` (optional): Whether to use with-firmware/ initrd
-- `template` (required): iPXE boot template
 
 ### Provision
 Triggers installation of a Machine using a BootTarget.
@@ -81,17 +52,17 @@ Triggers installation of a Machine using a BootTarget.
 apiVersion: isoboot.io/v1alpha1
 kind: Provision
 metadata:
-  name: vm-01-debian-12
+  name: vm-01-debian-13
 spec:
   machineRef: vm-01.lan
-  bootTargetRef: debian-12
+  bootTargetRef: debian-13-no-firmware
   responseTemplateRef: debian-standard
   configMaps:
     - config-01
   secrets:
     - secret-01
 ```
-Status phases: Pending → WaitingForBootSource → InProgress → Complete/Failed/ConfigError
+Status phases: Pending → InProgress → Complete/Failed/ConfigError
 
 ### ResponseTemplate
 Templates for answer files (preseed, kickstart, etc.).
@@ -110,6 +81,6 @@ spec:
 ## Naming Conventions
 
 - Machine: FQDN format (`vm-01.lan`)
-- BootSource: OS version (`debian-12`, `debian-13`)
-- BootTarget: OS version or variant (`debian-12`, `debian-12-no-firmware`)
-- Provision: Machine + BootTarget (`vm-01-debian-12`)
+- DiskImage: OS identifier (`debian-13`)
+- BootTarget: OS + variant (`debian-13-no-firmware`, `debian-13-with-firmware`)
+- Provision: Machine + BootTarget (`vm-01-debian-13-no-firmware`)

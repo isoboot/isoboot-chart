@@ -7,13 +7,12 @@ Helm chart for isoboot - PXE boot infrastructure on Kubernetes.
 This repo works alongside `isoboot` (Go code for controller and HTTP server). Together they provide:
 - **dnsmasq**: Proxy DHCP for PXE boot (this chart)
 - **isoboot-controller**: Watches Provision CRs, manages boot workflows (Go repo)
-- **isoboot-http**: Serves iPXE scripts, static files, answer files (Go repo)
+- **isoboot-http**: Serves iPXE scripts, ISO content, answer files (Go repo)
 
 ## Git Conventions
 
 - **Never force push** - use squash merge at PR merge time
 - PRs required for main branch
-- After merging a PR, delete the local branch (`git branch -d <branch>`). GitHub auto-deletes the remote branch on merge.
 - On publishing a PR, request a Copilot review and poll for the response:
   ```bash
   # Request review
@@ -35,8 +34,6 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 - **Pod with hostNetwork**: Uses the host's network stack to bind to DHCP/TFTP ports
 - **dnsmasq**: Runs in proxy DHCP mode - responds to PXE requests without handing out IP addresses
 - **iPXE**: Boot files (undionly.kpxe for BIOS, ipxe.efi for UEFI) served via TFTP
-- **nginx** (port 8080): External-facing reverse proxy. Serves `/static/` files from disk (including `boot.ipxe` generated at startup), proxies `/dynamic/*` to the Go server
-- **isoboot-http** (port 80, ClusterIP Service): Go HTTP server. Handles conditional-boot, answer files, health checks. Nginx strips `/dynamic/` prefix and proxies to it via Service DNS
 
 ## Key Design Decisions
 
@@ -54,18 +51,16 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 crds/                 # Custom Resource Definitions
 ├── machine.yaml
 ├── provision.yaml
-├── bootsource.yaml
 ├── boottarget.yaml
+├── diskimage.yaml
 └── responsetemplate.yaml
 templates/            # Kubernetes resources
 ├── _helpers.tpl
 ├── deployment-controller.yaml  # Deployment (auto-restart)
-├── deployment-http.yaml        # Deployment (port 80, Go server)
-├── deployment-nginx.yaml       # Deployment (hostNetwork:8080, reverse proxy)
+├── deployment-http.yaml        # Deployment (hostNetwork)
 ├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
-├── bootsource-*.yaml            # BootSource resources (file downloads)
-├── boottarget-*.yaml           # BootTarget resources (boot config)
+├── boottarget-*.yaml
 └── ...
 files/                # Template files loaded via .Files.Get
 └── boottarget-debian-v1.tpl
@@ -87,30 +82,33 @@ spec:
 
 ```
 # In files/boottarget-foo.tpl (clean Go template syntax)
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/{{ .KernelFilename }}
+kernel http://{{ .Host }}:{{ .Port }}/iso/content/...
 ```
 
-### CRD Architecture: BootSource + BootTarget
+### BootTarget Naming Convention
+Create separate BootTargets for different boot configurations sharing the same DiskImage:
+- `debian-13-with-firmware` - includes `includeFirmwarePath: /initrd.gz` for firmware merging
+- `debian-13-no-firmware` - plain boot without firmware
 
-- **BootSource** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
-- **BootTarget** references a BootSource via `bootSourceRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootSource. Names: `debian-12`, `debian-12-no-firmware`.
+BootTarget fields:
+- `diskImageRef` (required): Reference to DiskImage resource (e.g., `debian-13`)
+- `includeFirmwarePath` (optional): Path that triggers firmware merging (see below)
+- `template`: iPXE boot template (use `.Files.Get` for clean syntax)
 
-BootSource directory layout without firmware (flat):
-```
-debian-12/
-  linux       ← kernel
-  initrd.gz   ← initrd
-```
+### Firmware Merging
 
-BootSource directory layout with firmware (subdirectories):
-```
-debian-12/
-  linux                   ← kernel (always top-level)
-  no-firmware/
-    initrd.gz             ← original initrd
-  with-firmware/
-    initrd.gz             ← initrd + firmware.cpio.gz concatenated
-```
+When `includeFirmwarePath` is set (e.g., `/initrd.gz`), the HTTP server merges firmware with the requested file:
+
+1. Client requests `/iso/content/debian-13-with-firmware/mini.iso/initrd.gz`
+2. Server checks if request path matches `includeFirmwarePath`
+3. If match, serves: `initrd.gz` + `firmware.cpio.gz` concatenated
+4. If no match, serves the file as-is
+
+This follows the Debian netboot firmware method: `cat initrd.gz firmware.cpio.gz > combined.gz`
+
+The path must match exactly (with leading `/`). Examples:
+- `includeFirmwarePath: /initrd.gz` - merges firmware when `/initrd.gz` is requested
+- `includeFirmwarePath: ""` (or omitted) - no firmware merging, serves files as-is
 
 ### BootTarget Template Variables
 
@@ -120,19 +118,13 @@ Available in iPXE boot templates (files/boottarget-*.tpl):
 - `{{ .MachineName }}` - full machine name (e.g., "vm-01.lan") - use for answer file URLs
 - `{{ .Hostname }}` - first part before dot (e.g., "vm-01") - use for kernel hostname=
 - `{{ .Domain }}` - everything after first dot (e.g., "lan") - use for kernel domain=
-- `{{ .BootTarget }}` - BootTarget resource name
-- `{{ .BootSource }}` - BootSource resource name (use for static file paths)
-- `{{ .UseFirmware }}` - bool, whether to use firmware-combined initrd
-- `{{ .ProvisionName }}` - Provision name (use for answer file URLs)
-- `{{ .KernelFilename }}` - kernel filename (e.g., "linux")
-- `{{ .InitrdFilename }}` - initrd filename (e.g., "initrd.gz")
-- `{{ .HasFirmware }}` - bool, whether BootSource has firmware defined
+- `{{ .BootTarget }}` - BootTarget resource name - use for ISO content paths
 
 Example iPXE template:
 ```
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/{{ .KernelFilename }}
-initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/with-firmware/{{ .InitrdFilename }}
-imgargs {{ .KernelFilename }} initrd={{ .InitrdFilename }} hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg
+kernel http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/linux
+initrd http://{{ .Host }}:{{ .Port }}/iso/content/{{ .BootTarget }}/mini.iso/initrd.gz
+imgargs linux hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/answer/{{ .MachineName }}/preseed.cfg
 boot
 ```
 
@@ -144,7 +136,6 @@ Use OpenAPI validation in CRDs:
 
 ### Provision Status Phases
 - `Pending` - Waiting for machine to PXE boot
-- `WaitingForBootSource` - BootSource not yet Complete
 - `InProgress` - Boot started, installation running
 - `Complete` - Installation finished successfully
 - `Failed` - Installation failed
