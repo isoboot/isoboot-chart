@@ -198,3 +198,4 @@ jobs:
             echo "--- $pod ---"
             kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
           done
+          kubectl describe pod -n isoboot -l app.kubernetes.io/component=proxy | grep -A5 "Last State"
