@@ -48,6 +48,10 @@ spec:
               cat > /etc/squid/squid.conf << SQUID_EOF
               http_port {{ .Values.proxy.port }}
 
+              # Log to stderr/stdout for container visibility
+              cache_log stdio:/dev/stderr
+              access_log stdio:/dev/stdout
+
               # Cache settings
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
@@ -75,7 +79,7 @@ spec:
               http_access deny all
 
               # Cache aggressively for boot files
-              refresh_pattern -i \.(iso|gz|cpio|kpxe|efi)$ 10080 90% 43200 override-expire ignore-no-cache ignore-no-store
+              refresh_pattern -i \.(iso|gz|cpio|kpxe|efi)$ 10080 90% 43200 override-expire ignore-no-store
               refresh_pattern . 0 20% 4320
 
               # Fast shutdown (default 30s)

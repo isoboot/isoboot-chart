@@ -64,7 +64,7 @@ jobs:
           # Once Go compilation finishes, CPU is freed for remaining pods
           # (dnsmasq, nginx, squid) to complete their startup.
           kubectl wait --for=condition=ready pod --all \
-            -n isoboot --timeout=300s
+            -n isoboot --timeout=600s
 
       - name: Apply test fixtures
         run: |
