@@ -39,6 +39,20 @@ jobs:
             --set interface=${{ env.INTERFACE }} \
             --set proxy.cacheSize=100
 
+      - name: Check cgroup memory limits
+        run: |
+          echo "=== Kind container memory limit ==="
+          docker inspect kind-control-plane --format '{{.HostConfig.Memory}}' || true
+          echo ""
+          echo "=== Cgroup v2 memory.max (inside kind node) ==="
+          docker exec kind-control-plane cat /sys/fs/cgroup/memory.max 2>/dev/null || true
+          echo ""
+          echo "=== Cgroup v2 memory.current ==="
+          docker exec kind-control-plane cat /sys/fs/cgroup/memory.current 2>/dev/null || true
+          echo ""
+          echo "=== Node memory ==="
+          docker exec kind-control-plane free -m
+
       - name: Scale down non-squid pods
         run: |
           kubectl scale deployment isoboot-controller isoboot-http isoboot-nginx \

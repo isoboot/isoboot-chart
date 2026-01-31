@@ -61,6 +61,10 @@ spec:
               echo "Config contents:"
               cat /etc/squid/squid.conf
 
+              echo "=== Cgroup memory limit for this container ==="
+              cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "not available"
+              cat /sys/fs/cgroup/memory.current 2>/dev/null || echo "not available"
+
               echo "Starting squid on port {{ .Values.proxy.port }}..."
               exec squid -N -d 1
           volumeMounts:
