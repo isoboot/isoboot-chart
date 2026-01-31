@@ -18,7 +18,6 @@ spec:
         {{- include "isoboot.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: proxy
     spec:
-      hostNetwork: true
       containers:
         - name: squid
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -51,7 +50,7 @@ spec:
               # Cache settings
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
-              cache_mem 256 MB
+              cache_mem 16 MB
 
               # Allow RFC1918 private networks
               acl localnet src 10.0.0.0/8
@@ -86,7 +85,7 @@ spec:
               squid -z -N
 
               echo "Starting squid on port {{ .Values.proxy.port }}..."
-              exec squid -N -d 1
+              exec squid -N -X
           volumeMounts:
             - name: squid-cache
               mountPath: /var/spool/squid
