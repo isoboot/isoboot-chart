@@ -79,6 +79,20 @@ jobs:
       - name: Install CRDs
         run: kubectl apply -f ./crds/
 
+      - name: Node memory before helm install
+        run: |
+          echo "=== Host ulimit ==="
+          ulimit -n
+          echo ""
+          echo "=== Kind node memory ==="
+          docker exec kind-control-plane free -m
+          echo ""
+          echo "=== Cgroup version ==="
+          docker exec kind-control-plane stat -fc %T /sys/fs/cgroup
+          echo ""
+          echo "=== Kind container ulimit ==="
+          docker exec kind-control-plane sh -c 'ulimit -n'
+
       - name: Helm install
         run: |
           helm install isoboot . -n isoboot --create-namespace \
@@ -87,7 +101,7 @@ jobs:
       - name: Wait for pods
         run: |
           kubectl wait --for=condition=ready pod --all \
-            -n isoboot --timeout=600s
+            -n isoboot --timeout=300s
 
       - name: Wait for DiskImages
         run: |
@@ -187,17 +201,27 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
+          echo "=== Node Memory ==="
+          docker exec kind-control-plane free -m
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -n isoboot -o wide
+          echo ""
+          echo "=== Squid Pod Describe ==="
+          kubectl describe pod -n isoboot -l app.kubernetes.io/component=proxy
+          echo ""
+          echo "=== Squid Pod Previous Logs ==="
+          kubectl logs -n isoboot -l app.kubernetes.io/component=proxy --previous --tail=200 || true
+          echo ""
+          echo "=== Squid Pod Current Logs ==="
+          kubectl logs -n isoboot -l app.kubernetes.io/component=proxy --tail=200 || true
+          echo ""
           echo "=== CRD Status ==="
           kubectl get diskimage,provision,machine,boottarget,responsetemplate \
             -n isoboot -o wide 2>/dev/null || true
           echo ""
-          echo "=== ISO storage ==="
-          docker exec kind-control-plane \
-            find /opt/isoboot/iso -type f -ls 2>/dev/null || true
-          echo ""
-          echo "=== Pod Logs ==="
-          for pod in $(kubectl get pods -n isoboot -o name); do
+          echo "=== Other Pod Logs ==="
+          for pod in $(kubectl get pods -n isoboot -o name | grep -v squid); do
             echo "--- $pod ---"
-            kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
+            kubectl logs "$pod" -n isoboot --all-containers=true --tail=50 || true
           done
-          kubectl describe pod -n isoboot -l app.kubernetes.io/component=proxy | grep -A5 "Last State"
