@@ -18,7 +18,6 @@ spec:
         {{- include "isoboot.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: proxy
     spec:
-      hostNetwork: true
       containers:
         - name: squid
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
