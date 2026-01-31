@@ -8,8 +8,6 @@ metadata:
     app.kubernetes.io/component: proxy
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       {{- include "isoboot.selectorLabels" . | nindent 6 }}
@@ -42,29 +40,50 @@ spec:
               SUBNET="${NETWORK}/${PREFIX}"
               echo "Detected subnet: ${SUBNET}"
 
-              echo "Setting up cache and log directories..."
+              echo "Setting up cache directory..."
               mkdir -p /var/spool/squid
               chown squid:squid /var/spool/squid
-              mkdir -p /var/log/squid
-              chown squid:squid /var/log/squid
 
               echo "Generating squid config..."
               cat > /etc/squid/squid.conf << SQUID_EOF
-              workers 1
               http_port {{ .Values.proxy.port }}
-              cache deny all
-              cache_mem 8 MB
-              memory_pools off
-              access_log none
-              http_access allow all
+
+              # Cache settings
+              cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
+              maximum_object_size {{ .Values.proxy.maxObjectSize }}
+              cache_mem 256 MB
+
+              # Allow RFC1918 private networks
+              acl localnet src 10.0.0.0/8
+              acl localnet src 172.16.0.0/12
+              acl localnet src 192.168.0.0/16
+
+              # Safe ports
+              acl SSL_ports port 443
+              acl Safe_ports port 80
+              acl Safe_ports port 443
+              acl Safe_ports port {{ .Values.http.port }}
+              acl CONNECT method CONNECT
+
+              # Access rules
+              http_access deny !Safe_ports
+              http_access deny CONNECT !SSL_ports
+              http_access allow localhost manager
+              http_access deny manager
+              http_access allow localnet
+              http_access allow localhost
+              http_access deny all
+
+              # Cache aggressively for boot files
+              refresh_pattern -i \.(iso|gz|cpio|kpxe|efi)$ 10080 90% 43200 override-expire ignore-no-cache ignore-no-store
+              refresh_pattern . 0 20% 4320
+
+              # Fast shutdown (default 30s)
+              shutdown_lifetime 5 seconds
               SQUID_EOF
 
-              echo "Config contents:"
-              cat /etc/squid/squid.conf
-
-              echo "=== Cgroup memory limit for this container ==="
-              cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "not available"
-              cat /sys/fs/cgroup/memory.current 2>/dev/null || echo "not available"
+              echo "Initializing cache..."
+              squid -z -N
 
               echo "Starting squid on port {{ .Values.proxy.port }}..."
               exec squid -N -d 1
