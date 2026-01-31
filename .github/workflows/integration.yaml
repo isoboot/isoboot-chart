@@ -36,7 +36,8 @@ jobs:
       - name: Helm install (squid only)
         run: |
           helm install isoboot . -n isoboot --create-namespace \
-            --set interface=${{ env.INTERFACE }}
+            --set interface=${{ env.INTERFACE }} \
+            --set proxy.resources.limits.memory=2Gi
 
       - name: Wait for squid pod
         run: |
@@ -52,6 +53,15 @@ jobs:
       - name: Show logs on failure
         if: failure()
         run: |
+          echo "=== Squid Pod Describe ==="
+          kubectl describe pod -l 'app.kubernetes.io/component=proxy' \
+            -n isoboot || true
+          echo ""
+          echo "=== Squid Cache Log ==="
+          SQUID_POD=$(kubectl get pod -l 'app.kubernetes.io/component=proxy' \
+            -n isoboot -o jsonpath='{.items[0].metadata.name}')
+          kubectl exec "$SQUID_POD" -n isoboot -- cat /var/log/squid/cache.log 2>/dev/null || true
+          echo ""
           echo "=== Pod Logs ==="
           for pod in $(kubectl get pods -n isoboot -o name); do
             echo "--- $pod ---"
