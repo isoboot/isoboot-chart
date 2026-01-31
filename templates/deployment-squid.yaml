@@ -61,7 +61,7 @@ spec:
               # Cache settings
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
-              cache_mem 64 MB
+              cache_mem 16 MB
               memory_pools off
 
               # Allow RFC1918 private networks

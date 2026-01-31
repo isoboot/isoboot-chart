@@ -38,10 +38,10 @@ proxy:
   cacheSize: 5000  # MB (~5GB)
   resources:
     limits:
-      memory: "512Mi"
+      memory: "128Mi"
       cpu: "500m"
     requests:
-      memory: "256Mi"
+      memory: "64Mi"
       cpu: "100m"
 
 resources:
