@@ -95,12 +95,12 @@ spec:
           livenessProbe:
             tcpSocket:
               port: {{ .Values.proxy.port }}
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 30
           readinessProbe:
             tcpSocket:
               port: {{ .Values.proxy.port }}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 60
             periodSeconds: 10
       volumes:
         - name: squid-cache
