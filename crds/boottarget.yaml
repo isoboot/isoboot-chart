@@ -17,13 +17,13 @@ spec:
             spec:
               type: object
               required:
-                - bootSourceRef
+                - bootMediaRef
                 - template
               properties:
-                bootSourceRef:
+                bootMediaRef:
                   type: string
                   minLength: 1
-                  description: Reference to a BootSource resource name
+                  description: Reference to a BootMedia resource name
                 useFirmware:
                   type: boolean
                   default: false
@@ -33,9 +33,9 @@ spec:
                   minLength: 1
                   description: iPXE boot template content
       additionalPrinterColumns:
-        - name: BootSource
+        - name: BootMedia
           type: string
-          jsonPath: .spec.bootSourceRef
+          jsonPath: .spec.bootMediaRef
         - name: Firmware
           type: boolean
           jsonPath: .spec.useFirmware

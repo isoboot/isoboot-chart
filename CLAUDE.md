@@ -54,7 +54,7 @@ Deploys a PXE boot proxy DHCP server using dnsmasq and iPXE. Enables network boo
 crds/                 # Custom Resource Definitions
 ├── machine.yaml
 ├── provision.yaml
-├── bootsource.yaml
+├── bootmedia.yaml
 ├── boottarget.yaml
 └── responsetemplate.yaml
 templates/            # Kubernetes resources
@@ -64,7 +64,7 @@ templates/            # Kubernetes resources
 ├── deployment-nginx.yaml       # Deployment (hostNetwork:8080, reverse proxy)
 ├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
-├── bootsource-*.yaml            # BootSource resources (file downloads)
+├── bootmedia-*.yaml            # BootMedia resources (file downloads)
 ├── boottarget-*.yaml           # BootTarget resources (boot config)
 └── ...
 files/                # Template files loaded via .Files.Get
@@ -87,22 +87,22 @@ spec:
 
 ```
 # In files/boottarget-foo.tpl (clean Go template syntax)
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/{{ .KernelFilename }}
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
 ```
 
-### CRD Architecture: BootSource + BootTarget
+### CRD Architecture: BootMedia + BootTarget
 
-- **BootSource** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
-- **BootTarget** references a BootSource via `bootSourceRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootSource. Names: `debian-12`, `debian-12-no-firmware`.
+- **BootMedia** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
+- **BootTarget** references a BootMedia via `bootMediaRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootMedia. Names: `debian-12`, `debian-12-no-firmware`.
 
-BootSource directory layout without firmware (flat):
+BootMedia directory layout without firmware (flat):
 ```
 debian-12/
   linux       ← kernel
   initrd.gz   ← initrd
 ```
 
-BootSource directory layout with firmware (subdirectories):
+BootMedia directory layout with firmware (subdirectories):
 ```
 debian-12/
   linux                   ← kernel (always top-level)
@@ -121,17 +121,17 @@ Available in iPXE boot templates (files/boottarget-*.tpl):
 - `{{ .Hostname }}` - first part before dot (e.g., "vm-01") - use for kernel hostname=
 - `{{ .Domain }}` - everything after first dot (e.g., "lan") - use for kernel domain=
 - `{{ .BootTarget }}` - BootTarget resource name
-- `{{ .BootSource }}` - BootSource resource name (use for static file paths)
+- `{{ .BootMedia }}` - BootMedia resource name (use for static file paths)
 - `{{ .UseFirmware }}` - bool, whether to use firmware-combined initrd
 - `{{ .ProvisionName }}` - Provision name (use for answer file URLs)
 - `{{ .KernelFilename }}` - kernel filename (e.g., "linux")
 - `{{ .InitrdFilename }}` - initrd filename (e.g., "initrd.gz")
-- `{{ .HasFirmware }}` - bool, whether BootSource has firmware defined
+- `{{ .HasFirmware }}` - bool, whether BootMedia has firmware defined
 
 Example iPXE template:
 ```
-kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/{{ .KernelFilename }}
-initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/with-firmware/{{ .InitrdFilename }}
+kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/{{ .KernelFilename }}
+initrd http://{{ .Host }}:{{ .Port }}/static/{{ .BootMedia }}/with-firmware/{{ .InitrdFilename }}
 imgargs {{ .KernelFilename }} initrd={{ .InitrdFilename }} hostname={{ .Hostname }} domain={{ .Domain }} preseed/url=http://{{ .Host }}:{{ .Port }}/dynamic/answer/{{ .ProvisionName }}/preseed.cfg
 boot
 ```
@@ -144,7 +144,7 @@ Use OpenAPI validation in CRDs:
 
 ### Provision Status Phases
 - `Pending` - Waiting for machine to PXE boot
-- `WaitingForBootSource` - BootSource not yet Complete
+- `WaitingForBootMedia` - BootMedia not yet Complete
 - `InProgress` - Boot started, installation running
 - `Complete` - Installation finished successfully
 - `Failed` - Installation failed

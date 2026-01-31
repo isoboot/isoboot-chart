@@ -12,7 +12,7 @@ MAC="00-00-00-00-00-02"
 WRONG_MAC="00-00-00-00-00-99"
 PROVISION="test-e2e-debian12"
 BOOT_TARGET="debian-12-no-firmware"
-BOOT_SOURCE="debian-12"
+BOOT_MEDIA="debian-12"
 FAILURES=0
 TESTS=0
 
@@ -37,12 +37,12 @@ get_status() {
 
 echo "Setup: computing reference hashes from downloaded files"
 
-# Kernel is always at top level under bootsource name
+# Kernel is always at top level under bootmedia name
 KERNEL_SHA=$(docker exec kind-control-plane \
-  sha256sum "/opt/isoboot/files/${BOOT_SOURCE}/linux" | awk '{print $1}')
+  sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/linux" | awk '{print $1}')
 # BootTarget debian-12-no-firmware uses useFirmware: false, so initrd is in no-firmware/
 INITRD_SHA=$(docker exec kind-control-plane \
-  sha256sum "/opt/isoboot/files/${BOOT_SOURCE}/no-firmware/initrd.gz" | awk '{print $1}')
+  sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/no-firmware/initrd.gz" | awk '{print $1}')
 
 echo "  kernel sha256: ${KERNEL_SHA}"
 echo "  initrd (no-firmware) sha256: ${INITRD_SHA}"
@@ -111,8 +111,8 @@ test_conditional_boot_200_in_progress() {
     echo -n "(expected 200, got ${code}) "
     return 1
   fi
-  if ! echo "$body" | grep -q "${BOOT_SOURCE}"; then
-    echo -n "(missing ${BOOT_SOURCE} in body) "
+  if ! echo "$body" | grep -q "${BOOT_MEDIA}"; then
+    echo -n "(missing ${BOOT_MEDIA} in body) "
     return 1
   fi
   kubectl wait --for=jsonpath='{.status.phase}'=InProgress \
@@ -123,7 +123,7 @@ test_conditional_boot_200_in_progress() {
 
 test_kernel_in_progress() {
   curl -f -s -o "${TMPDIR}/kernel" \
-    "${BASE_URL}/static/${BOOT_SOURCE}/linux"
+    "${BASE_URL}/static/${BOOT_MEDIA}/linux"
   local sha
   sha=$(sha256sum "${TMPDIR}/kernel" | awk '{print $1}')
   if [ "$sha" != "$KERNEL_SHA" ]; then
@@ -142,7 +142,7 @@ test_kernel_in_progress() {
 
 test_initrd_in_progress() {
   curl -f -s -o "${TMPDIR}/initrd" \
-    "${BASE_URL}/static/${BOOT_SOURCE}/no-firmware/initrd.gz"
+    "${BASE_URL}/static/${BOOT_MEDIA}/no-firmware/initrd.gz"
   local sha
   sha=$(sha256sum "${TMPDIR}/initrd" | awk '{print $1}')
   if [ "$sha" != "$INITRD_SHA" ]; then

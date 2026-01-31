@@ -1,5 +1,5 @@
 apiVersion: isoboot.io/v1alpha1
-kind: BootSource
+kind: BootMedia
 metadata:
   name: debian-12
   labels:

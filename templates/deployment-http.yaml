@@ -38,7 +38,7 @@ spec:
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."
               exec isoboot-http \
                 --host="${HOST_IP}" \
-                --port="{{ .Values.http.listenPort }}" \
+                --listen-port="{{ .Values.http.listenPort }}" \
                 --proxy-port="{{ .Values.proxy.port }}" \
                 --controller="${CONTROLLER_ADDR}" \
                 --templates-configmap="{{ include "isoboot.fullname" . }}-templates"
