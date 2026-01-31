@@ -52,13 +52,19 @@ jobs:
       - name: Helm install
         run: |
           helm install isoboot . -n isoboot --create-namespace \
-            --set interface=${{ env.INTERFACE }} \
-            --set proxy.enabled=false
+            --set interface=${{ env.INTERFACE }}
 
-      - name: Wait for pods
+      - name: Wait for core pods
         run: |
-          kubectl wait --for=condition=ready pod --all \
+          # Wait for Go-compiled pods first (controller, http). These consume
+          # all CPU during compilation on cache miss, starving other pods.
+          kubectl wait --for=condition=ready pod \
+            -l 'app.kubernetes.io/component in (controller, http)' \
             -n isoboot --timeout=900s
+          # Once Go compilation finishes, CPU is freed for remaining pods
+          # (dnsmasq, nginx, squid) to complete their startup.
+          kubectl wait --for=condition=ready pod --all \
+            -n isoboot --timeout=300s
 
       - name: Apply test fixtures
         run: |
