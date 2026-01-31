@@ -38,7 +38,6 @@ jobs:
           helm install isoboot . -n isoboot --create-namespace \
             --set interface=${{ env.INTERFACE }} \
             --set proxy.cacheSize=100 \
-            --set 'proxy.maxObjectSize=10 MB' \
             --set proxy.resources.limits.memory=512Mi
 
       - name: Wait for squid pod
