@@ -19,7 +19,7 @@ rules:
     resources: ["machines", "provisions", "bootmedias", "boottargets", "responsetemplates"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["isoboot.io"]
-    resources: ["provisions/status", "bootmedias/status"] origin/main
+    resources: ["provisions/status", "bootmedias/status"]
     verbs: ["update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
