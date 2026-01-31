@@ -16,10 +16,10 @@ rules:
     resources: ["configmaps", "secrets"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["isoboot.io"]
-    resources: ["machines", "provisions", "bootmedias", "boottargets", "responsetemplates"]
+    resources: ["machines", "provisions", "diskimages", "bootmedias", "boottargets", "responsetemplates"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["isoboot.io"]
-    resources: ["provisions/status", "bootmedias/status"]
+    resources: ["provisions/status", "diskimages/status", "bootmedias/status"]
     verbs: ["update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
