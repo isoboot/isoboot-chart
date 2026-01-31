@@ -1,5 +1,5 @@
 apiVersion: isoboot.io/v1alpha1
-kind: BootMedia
+kind: BootSource
 metadata:
   name: debian-13
   labels:

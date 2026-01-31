@@ -52,7 +52,8 @@ jobs:
       - name: Helm install
         run: |
           helm install isoboot . -n isoboot --create-namespace \
-            --set interface=${{ env.INTERFACE }}
+            --set interface=${{ env.INTERFACE }} \
+            --set proxy.enabled=false
 
       - name: Wait for pods
         run: |
@@ -65,12 +66,12 @@ jobs:
           kubectl apply -f ./tests/integration/boot/fixtures.yaml
           kubectl apply -f ./tests/integration/e2e/fixtures.yaml
 
-      - name: Wait for BootMedia
+      - name: Wait for BootSource
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
-            bootmedia/debian-12 \
-            bootmedia/debian-13 \
-            bootmedia/debian-13-iso \
+            bootsource/debian-12 \
+            bootsource/debian-13 \
+            bootsource/debian-13-iso \
             -n isoboot --timeout=600s
 
       - name: Get host IP
@@ -129,7 +130,7 @@ jobs:
         if: failure()
         run: |
           echo "=== CRD Status ==="
-          kubectl get bootmedia,provision,machine,boottarget,responsetemplate \
+          kubectl get bootsource,provision,machine,boottarget,responsetemplate \
             -n isoboot -o wide 2>/dev/null || true
           echo ""
           echo "=== Files storage ==="
