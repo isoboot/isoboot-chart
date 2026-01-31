@@ -59,16 +59,21 @@ jobs:
           kubectl wait --for=condition=ready pod --all \
             -n isoboot --timeout=900s
 
+      - name: Apply test fixtures
+        run: |
+          kubectl apply -f ./tests/integration/iso-compare/fixtures.yaml
+          kubectl apply -f ./tests/integration/boot/fixtures.yaml
+          kubectl apply -f ./tests/integration/e2e/fixtures.yaml
+
       - name: Wait for BootMedia
-        if: false
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
             bootmedia/debian-12 \
             bootmedia/debian-13 \
+            bootmedia/debian-13-iso \
             -n isoboot --timeout=600s
 
       - name: Get host IP
-        if: false
         run: |
           HOST_IP=$(docker exec kind-control-plane \
             ip -4 addr show "${{ env.INTERFACE }}" \
@@ -81,15 +86,15 @@ jobs:
           echo "Host IP: $HOST_IP"
 
       - name: Test static content serving
-        if: false
         run: ./tests/integration/iso-content/run.sh "$HOST_IP"
 
+      - name: Test ISO extraction matches direct download
+        run: ./tests/integration/iso-compare/test.sh "$HOST_IP"
+
       - name: Test boot endpoints
-        if: false
         run: ./tests/integration/boot/test.sh "$HOST_IP"
 
       - name: Test e2e provisioning flow
-        if: false
         run: ./tests/integration/e2e/test.sh "$HOST_IP"
 
       - name: Show pod status

@@ -12,6 +12,7 @@ MAC="00-00-00-00-00-02"
 WRONG_MAC="00-00-00-00-00-99"
 PROVISION="test-e2e-debian12"
 BOOT_TARGET="debian-12-no-firmware"
+BOOT_MEDIA="debian-12"
 FAILURES=0
 TESTS=0
 
@@ -32,37 +33,19 @@ get_status() {
   kubectl get provision/"$PROVISION" -n isoboot -o jsonpath='{.status.phase}'
 }
 
-# --- Setup: mount ISO and compute reference hashes ---
+# --- Setup: compute reference hashes from downloaded files ---
 
-echo "Setup: mounting ISO and computing reference hashes"
+echo "Setup: computing reference hashes from downloaded files"
 
-ISO_PATH=$(docker exec kind-control-plane \
-  find "/opt/isoboot/iso/debian-12" -name 'mini.iso' -type f | head -1)
-[ -n "$ISO_PATH" ] || {
-  echo "mini.iso not found for debian-12"
-  docker exec kind-control-plane find /opt/isoboot/iso -type f
-  exit 1
-}
+# Kernel is always at top level under bootmedia name
+KERNEL_SHA=$(docker exec kind-control-plane \
+  sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/linux" | awk '{print $1}')
+# BootTarget debian-12-no-firmware uses useFirmware: false, so initrd is in no-firmware/
+INITRD_SHA=$(docker exec kind-control-plane \
+  sha256sum "/opt/isoboot/files/${BOOT_MEDIA}/no-firmware/initrd.gz" | awk '{print $1}')
 
-MOUNT_DIR="/tmp/iso-mount-e2e"
-
-cleanup_iso_mount() {
-  docker exec kind-control-plane umount "$MOUNT_DIR" >/dev/null 2>&1 || true
-  docker exec kind-control-plane rmdir "$MOUNT_DIR" >/dev/null 2>&1 || true
-}
-trap cleanup_iso_mount EXIT
-
-docker exec kind-control-plane mkdir -p "$MOUNT_DIR"
-docker exec kind-control-plane mount -o ro "$ISO_PATH" "$MOUNT_DIR"
-
-ISO_KERNEL_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/linux" | awk '{print $1}')
-ISO_INITRD_SHA=$(docker exec kind-control-plane sha256sum "${MOUNT_DIR}/initrd.gz" | awk '{print $1}')
-
-cleanup_iso_mount
-trap - EXIT
-
-echo "  ISO kernel sha256: ${ISO_KERNEL_SHA}"
-echo "  ISO initrd sha256: ${ISO_INITRD_SHA}"
+echo "  kernel sha256: ${KERNEL_SHA}"
+echo "  initrd (no-firmware) sha256: ${INITRD_SHA}"
 echo ""
 
 TMPDIR="/tmp/e2e-boot"
@@ -73,7 +56,7 @@ mkdir -p "$TMPDIR"
 test_initial_404() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404, got ${code}) "
     return 1
@@ -104,7 +87,7 @@ EOF
 test_wrong_mac_404_still_pending() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${WRONG_MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${WRONG_MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404 for wrong MAC, got ${code}) "
     return 1
@@ -122,14 +105,14 @@ test_wrong_mac_404_still_pending() {
 test_conditional_boot_200_in_progress() {
   local body code
   code=$(curl -s -o "${TMPDIR}/conditional-body" -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   body=$(cat "${TMPDIR}/conditional-body")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
     return 1
   fi
-  if ! echo "$body" | grep -q "${BOOT_TARGET}"; then
-    echo -n "(missing ${BOOT_TARGET} in body) "
+  if ! echo "$body" | grep -q "${BOOT_MEDIA}"; then
+    echo -n "(missing ${BOOT_MEDIA} in body) "
     return 1
   fi
   kubectl wait --for=jsonpath='{.status.phase}'=InProgress \
@@ -140,10 +123,10 @@ test_conditional_boot_200_in_progress() {
 
 test_kernel_in_progress() {
   curl -f -s -o "${TMPDIR}/kernel" \
-    "${BASE_URL}/iso/content/${BOOT_TARGET}/mini.iso/linux"
+    "${BASE_URL}/static/${BOOT_MEDIA}/linux"
   local sha
   sha=$(sha256sum "${TMPDIR}/kernel" | awk '{print $1}')
-  if [ "$sha" != "$ISO_KERNEL_SHA" ]; then
+  if [ "$sha" != "$KERNEL_SHA" ]; then
     echo -n "(kernel sha256 mismatch: ${sha}) "
     return 1
   fi
@@ -155,14 +138,14 @@ test_kernel_in_progress() {
   fi
 }
 
-# --- Test 6: GET initrd, verify SHA, status InProgress ---
+# --- Test 6: GET initrd (no-firmware), verify SHA, status InProgress ---
 
 test_initrd_in_progress() {
   curl -f -s -o "${TMPDIR}/initrd" \
-    "${BASE_URL}/iso/content/${BOOT_TARGET}/mini.iso/initrd.gz"
+    "${BASE_URL}/static/${BOOT_MEDIA}/no-firmware/initrd.gz"
   local sha
   sha=$(sha256sum "${TMPDIR}/initrd" | awk '{print $1}')
-  if [ "$sha" != "$ISO_INITRD_SHA" ]; then
+  if [ "$sha" != "$INITRD_SHA" ]; then
     echo -n "(initrd sha256 mismatch: ${sha}) "
     return 1
   fi
@@ -179,7 +162,7 @@ test_initrd_in_progress() {
 test_preseed_in_progress() {
   local body code
   code=$(curl -s -o "${TMPDIR}/preseed" -w '%{http_code}' \
-    "${BASE_URL}/answer/${PROVISION}/preseed.cfg")
+    "${BASE_URL}/dynamic/answer/${PROVISION}/preseed.cfg")
   body=$(cat "${TMPDIR}/preseed")
   if [ "$code" != "200" ]; then
     echo -n "(expected 200, got ${code}) "
@@ -197,14 +180,14 @@ test_preseed_in_progress() {
   fi
 }
 
-# --- Test 8: /boot/done, status Complete ---
+# --- Test 8: /dynamic/boot/done, status Complete ---
 
 test_done_complete() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/done?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/done?mac=${MAC}")
   if [ "$code" != "200" ]; then
-    echo -n "(/boot/done returned ${code}, expected 200) "
+    echo -n "(/dynamic/boot/done returned ${code}, expected 200) "
     return 1
   fi
   kubectl wait --for=jsonpath='{.status.phase}'=Complete \
@@ -216,7 +199,7 @@ test_done_complete() {
 test_after_done_404_still_complete() {
   local code
   code=$(curl -s -o /dev/null -w '%{http_code}' \
-    "${BASE_URL}/boot/conditional-boot?mac=${MAC}")
+    "${BASE_URL}/dynamic/boot/conditional-boot?mac=${MAC}")
   if [ "$code" != "404" ]; then
     echo -n "(expected 404, got ${code}) "
     return 1
@@ -235,8 +218,8 @@ run_test "conditional-boot 404 before provision" test_initial_404
 run_test "create provision and verify Pending" test_create_provision_pending
 run_test "wrong MAC 404, status still Pending" test_wrong_mac_404_still_pending
 run_test "conditional-boot 200 with ${BOOT_TARGET}, status InProgress" test_conditional_boot_200_in_progress
-run_test "kernel matches ISO, status InProgress" test_kernel_in_progress
-run_test "initrd matches ISO, status InProgress" test_initrd_in_progress
+run_test "kernel matches downloaded file, status InProgress" test_kernel_in_progress
+run_test "initrd (no-firmware) matches downloaded file, status InProgress" test_initrd_in_progress
 run_test "preseed content correct, status InProgress" test_preseed_in_progress
 run_test "done returns 200, status Complete" test_done_complete
 run_test "conditional-boot 404 after done, status Complete" test_after_done_404_still_complete

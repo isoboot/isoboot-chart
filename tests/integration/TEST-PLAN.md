@@ -3,61 +3,56 @@
 Tests run in the `integration` GitHub Actions workflow against a kind cluster
 with the Helm chart installed.
 
-## 1. ISO Content Serving
+## 1. Static Content Serving
 
 Script: `tests/integration/iso-content/run.sh` (wrapper)
-Per-image: `tests/integration/iso-content/test.sh <HOST_IP> <DISKIMAGE>`
+Per-BootMedia: `tests/integration/iso-content/test.sh <HOST_IP> <BOOTMEDIA>`
 
-Validates that the HTTP server correctly serves files extracted from ISOs,
-and merges firmware into initrd when `includeFirmwarePath` is set on the BootTarget.
+Validates that the HTTP server correctly serves files downloaded by the
+controller and stored at `/opt/isoboot/files/{bootMedia}/`.
 
 ### 1.1 debian-12
 
-#### 1.1.1 Error Handling
-
+- [x] Firmware expected (--expect-firmware flag fails test if no-firmware/ dir missing)
 - [x] Invalid file path returns HTTP 404
-
-#### 1.1.2 Kernel Serving
-
-- [x] Kernel via no-firmware BootTarget matches kernel extracted from mini.iso (SHA-256)
-- [x] Kernel via with-firmware BootTarget matches kernel extracted from mini.iso (SHA-256)
-
-#### 1.1.3 Initrd Serving & Firmware Merging
-
-- [x] Initrd via no-firmware BootTarget matches raw initrd.gz from mini.iso (SHA-256)
-- [x] Initrd via with-firmware BootTarget differs from raw initrd.gz (firmware was merged)
-- [x] Initrd via with-firmware BootTarget matches `cat initrd.gz firmware.cpio.gz` (SHA-256)
+- [x] Kernel served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd (no-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd (with-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] with-firmware initrd is larger than no-firmware initrd
 
 ### 1.2 debian-13
 
-#### 1.2.1 Error Handling
-
+- [x] Firmware expected (--expect-firmware flag fails test if no-firmware/ dir missing)
 - [x] Invalid file path returns HTTP 404
+- [x] Kernel served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd (no-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] Initrd (with-firmware) served via /static/ matches downloaded file (SHA-256)
+- [x] with-firmware initrd is larger than no-firmware initrd
 
-#### 1.2.2 Kernel Serving
+### 1.3 ISO Extraction Comparison (debian-13-iso)
 
-- [x] Kernel via no-firmware BootTarget matches kernel extracted from mini.iso (SHA-256)
-- [x] Kernel via with-firmware BootTarget matches kernel extracted from mini.iso (SHA-256)
+Script: `tests/integration/iso-compare/test.sh <HOST_IP>`
 
-#### 1.2.3 Initrd Serving & Firmware Merging
+Compares files from direct download (debian-13) vs ISO extraction (debian-13-iso)
+to verify ISO extraction produces byte-identical output.
 
-- [x] Initrd via no-firmware BootTarget matches raw initrd.gz from mini.iso (SHA-256)
-- [x] Initrd via with-firmware BootTarget differs from raw initrd.gz (firmware was merged)
-- [x] Initrd via with-firmware BootTarget matches `cat initrd.gz firmware.cpio.gz` (SHA-256)
+- [x] Kernel hash matches between direct download and ISO extraction
+- [x] Initrd (no-firmware) hash matches between direct download and ISO extraction
+- [x] Initrd (with-firmware) hash matches between direct download and ISO extraction
 
 ## 2. Boot Endpoints
 
 ### 2.1 Health Check
-- [x] /healthz returns HTTP 200
+- [x] /dynamic/healthz returns HTTP 200
 
 ### 2.2 iPXE Boot Script
-- [x] boot.ipxe returns HTTP 200 with #!ipxe and conditional-boot chain URL
+- [x] /static/boot.ipxe returns HTTP 200 with #!ipxe and conditional-boot chain URL
 
 ### 2.3 Conditional Boot Lifecycle
 - [x] Returns 404 when no Provision exists
-- [x] Returns 200 with debian-13-no-firmware after creating Provision
-- [x] Returns 404 after /boot/done marks Provision Complete
-- [x] Returns 200 with debian-12-with-firmware after creating second Provision
+- [x] Returns 200 with debian-13 after creating Provision
+- [x] Returns 404 after /dynamic/boot/done marks Provision Complete
+- [x] Returns 200 with debian-12 after creating second Provision
 
 ## 3. Answer File Rendering
 
@@ -67,7 +62,7 @@ and merges firmware into initrd when `includeFirmwarePath` is set on the BootTar
 
 Script: `tests/integration/e2e/test.sh <HOST_IP>`
 
-Full lifecycle test for debian-12-no-firmware: validates Provision status
+Full lifecycle test for debian-12: validates Provision status
 transitions, content serving, and status invariants at every step.
 
 ### 4.1 Pre-provision
@@ -80,13 +75,13 @@ transitions, content serving, and status invariants at every step.
 - [x] conditional-boot with unprovisioned MAC returns 404, status stays Pending
 
 ### 4.4 Boot Script
-- [x] conditional-boot with correct MAC returns 200 with debian-12-no-firmware, status transitions to InProgress
+- [x] conditional-boot with correct MAC returns 200 with debian-12, status transitions to InProgress
 
 ### 4.5 Content Serving (status stays InProgress)
-- [x] Kernel matches ISO (SHA-256), status InProgress
-- [x] Initrd matches ISO (SHA-256), status InProgress
+- [x] Kernel matches downloaded file (SHA-256), status InProgress
+- [x] Initrd (no-firmware) matches downloaded file (SHA-256), status InProgress
 - [x] Preseed returns correct content, status InProgress
 
 ### 4.6 Completion
-- [x] /boot/done returns 200, status transitions to Complete
+- [x] /dynamic/boot/done returns 200, status transitions to Complete
 - [x] conditional-boot returns 404 after done, status stays Complete
