@@ -65,12 +65,12 @@ jobs:
           kubectl apply -f ./tests/integration/boot/fixtures.yaml
           kubectl apply -f ./tests/integration/e2e/fixtures.yaml
 
-      - name: Wait for BootSource
+      - name: Wait for BootMedia
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
-            bootsource/debian-12 \
-            bootsource/debian-13 \
-            bootsource/debian-13-iso \
+            bootmedia/debian-12 \
+            bootmedia/debian-13 \
+            bootmedia/debian-13-iso \
             -n isoboot --timeout=600s
 
       - name: Get host IP
@@ -129,7 +129,7 @@ jobs:
         if: failure()
         run: |
           echo "=== CRD Status ==="
-          kubectl get bootsource,provision,machine,boottarget,responsetemplate \
+          kubectl get bootmedia,provision,machine,boottarget,responsetemplate \
             -n isoboot -o wide 2>/dev/null || true
           echo ""
           echo "=== Files storage ==="
