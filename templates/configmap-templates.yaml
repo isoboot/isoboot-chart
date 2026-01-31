@@ -5,7 +5,5 @@ metadata:
   labels:
     {{- include "isoboot.labels" . | nindent 4 }}
 data:
-  boot.ipxe: |
-    {{- .Files.Get "files/boot.ipxe" | nindent 4 }}
   debian-13.ipxe: |
     {{- .Files.Get "files/debian-13.ipxe" | nindent 4 }}
