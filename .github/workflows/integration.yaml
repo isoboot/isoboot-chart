@@ -39,11 +39,6 @@ jobs:
             --set interface=${{ env.INTERFACE }} \
             --set proxy.cacheSize=100
 
-      - name: Remove squid memory limits
-        run: |
-          kubectl patch deployment isoboot-squid -n isoboot --type=json \
-            -p='[{"op":"remove","path":"/spec/template/spec/containers/0/resources/limits/memory"},{"op":"remove","path":"/spec/template/spec/containers/0/resources/requests/memory"}]'
-
       - name: Wait for squid pod
         run: |
           kubectl wait --for=condition=ready pod \
@@ -54,20 +49,6 @@ jobs:
         if: always()
         run: |
           kubectl get pods -n isoboot -o wide
-
-      - name: Check squid memory
-        if: always()
-        run: |
-          SQUID_POD=$(kubectl get pod -l 'app.kubernetes.io/component=proxy' \
-            -n isoboot -o jsonpath='{.items[0].metadata.name}' 2>/dev/null) || true
-          if [ -n "$SQUID_POD" ]; then
-            echo "=== Squid process memory ==="
-            kubectl exec "$SQUID_POD" -n isoboot -- sh -c \
-              'ps aux 2>/dev/null || cat /proc/*/status 2>/dev/null | grep -E "^(Name|VmRSS|VmSize)" | head -30' || true
-            echo ""
-            echo "=== Node memory ==="
-            kubectl top node 2>/dev/null || true
-          fi
 
       - name: Show logs on failure
         if: failure()
