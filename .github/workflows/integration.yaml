@@ -85,13 +85,13 @@ jobs:
       - name: Wait for pods
         run: |
           kubectl wait --for=condition=ready pod --all \
-            -n isoboot --timeout=600s
+            -n isoboot --timeout=180s
 
       - name: Wait for DiskImages
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
             diskimage/debian-12 diskimage/debian-13 \
-            -n isoboot --timeout=600s
+            -n isoboot --timeout=180s
 
       - name: Get host IP
         run: |
