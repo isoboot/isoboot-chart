@@ -35,6 +35,7 @@ jobs:
         if: steps.cache-restore.outputs.cache-hit == 'true'
         run: |
           docker inspect kind-control-plane --format '{{.HostConfig.Memory}}'
+          docker exec kind-control-plane free -m
           docker exec kind-control-plane mkdir -p /var/cache/isoboot/go
           cd /tmp/isoboot-cache && tar cf - . \
             | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
