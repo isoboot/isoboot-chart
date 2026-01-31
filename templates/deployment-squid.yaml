@@ -29,6 +29,8 @@ spec:
             - |
               set -e
               INTERFACE="{{ required "interface is required" .Values.interface }}"
+              echo "Begin"
+              date
 
               echo "Installing squid, iproute2, and ipcalc..."
               apk add --no-cache squid iproute2 ipcalc
@@ -85,6 +87,7 @@ spec:
               echo "Initializing cache..."
               squid -z -N
 
+              date
               echo "Starting squid on port {{ .Values.proxy.port }}..."
               exec squid -N -d 1
           volumeMounts:
