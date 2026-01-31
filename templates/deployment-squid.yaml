@@ -89,7 +89,7 @@ spec:
 
               date
               echo "Starting squid on port {{ .Values.proxy.port }}..."
-              exec squid -N -d 9
+              exec squid -N -d 10
           volumeMounts:
             - name: squid-cache
               mountPath: /var/spool/squid
