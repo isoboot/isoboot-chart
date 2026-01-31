@@ -39,17 +39,15 @@ jobs:
             --set interface=${{ env.INTERFACE }} \
             --set proxy.cacheSize=100
 
-      - name: Check node memory
-        run: |
-          docker exec kind-control-plane cat /proc/meminfo | head -5
-          echo "---"
-          docker exec kind-control-plane free -m
-
       - name: Scale down non-squid pods
         run: |
           kubectl scale deployment isoboot-controller isoboot-http isoboot-nginx \
             -n isoboot --replicas=0
           kubectl delete pod isoboot-dnsmasq -n isoboot --ignore-not-found
+
+      - name: Wait for squid rollout
+        run: |
+          kubectl rollout status deployment/isoboot-squid -n isoboot --timeout=120s
 
       - name: Wait for squid pod
         run: |
