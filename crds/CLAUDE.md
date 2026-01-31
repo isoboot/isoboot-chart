@@ -18,11 +18,11 @@ spec:
 - `mac` (required): MAC address, dash-separated
 - `machineId` (optional): systemd machine-id for /etc/machine-id (exactly 32 lowercase hex characters)
 
-### BootMedia
+### BootSource
 Downloads and caches boot files (kernel, initrd, firmware).
 ```yaml
 apiVersion: isoboot.io/v1alpha1
-kind: BootMedia
+kind: BootSource
 metadata:
   name: debian-12
 spec:
@@ -58,20 +58,20 @@ debian-12/
 ```
 
 ### BootTarget
-Defines how to boot a specific OS/configuration, referencing a BootMedia.
+Defines how to boot a specific OS/configuration, referencing a BootSource.
 ```yaml
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
   name: debian-12
 spec:
-  bootMediaRef: debian-12
+  bootSourceRef: debian-12
   useFirmware: true
   template: |
     #!ipxe
     ...
 ```
-- `bootMediaRef` (required): Reference to BootMedia resource
+- `bootSourceRef` (required): Reference to BootSource resource
 - `useFirmware` (optional): Whether to use with-firmware/ initrd
 - `template` (required): iPXE boot template
 
@@ -91,7 +91,7 @@ spec:
   secrets:
     - secret-01
 ```
-Status phases: Pending → WaitingForBootMedia → InProgress → Complete/Failed/ConfigError
+Status phases: Pending → WaitingForBootSource → InProgress → Complete/Failed/ConfigError
 
 ### ResponseTemplate
 Templates for answer files (preseed, kickstart, etc.).
@@ -110,6 +110,6 @@ spec:
 ## Naming Conventions
 
 - Machine: FQDN format (`vm-01.lan`)
-- BootMedia: OS version (`debian-12`, `debian-13`)
+- BootSource: OS version (`debian-12`, `debian-13`)
 - BootTarget: OS version or variant (`debian-12`, `debian-12-no-firmware`)
 - Provision: Machine + BootTarget (`vm-01-debian-12`)

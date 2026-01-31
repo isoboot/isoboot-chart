@@ -60,7 +60,7 @@ spec:
                   type: string
                   enum:
                     - Pending
-                    - WaitingForBootMedia
+                    - WaitingForBootSource
                     - InProgress
                     - Complete
                     - Failed

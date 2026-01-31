@@ -8,14 +8,14 @@ fi
 
 HOST_IP=$1
 DIR=$(cd "$(dirname "$0")" && pwd)
-BOOT_MEDIAS="debian-12 debian-13"
+BOOT_SOURCES="debian-12 debian-13"
 GROUP_FAILURES=0
 
-for BM in $BOOT_MEDIAS; do
+for BM in $BOOT_SOURCES; do
   echo "=== static-content: ${BM} ==="
   echo ""
 
-  # All BootMedia resources include firmware
+  # All BootSource resources include firmware
   EXTRA_ARGS="--expect-firmware"
 
   set +e
@@ -34,7 +34,7 @@ done
 TOTAL_PASSED=0
 TOTAL_TESTS=0
 
-for BM in $BOOT_MEDIAS; do
+for BM in $BOOT_SOURCES; do
   results="/tmp/static-content-${BM}.results"
   if [ -f "$results" ]; then
     read -r passed tests < "$results"
@@ -44,7 +44,7 @@ for BM in $BOOT_MEDIAS; do
 done
 
 echo "=== Summary ==="
-for BM in $BOOT_MEDIAS; do
+for BM in $BOOT_SOURCES; do
   results="/tmp/static-content-${BM}.results"
   if [ -f "$results" ]; then
     read -r passed tests < "$results"

@@ -6,7 +6,7 @@ with the Helm chart installed.
 ## 1. Static Content Serving
 
 Script: `tests/integration/iso-content/run.sh` (wrapper)
-Per-BootMedia: `tests/integration/iso-content/test.sh <HOST_IP> <BOOTMEDIA>`
+Per-BootSource: `tests/integration/iso-content/test.sh <HOST_IP> <BOOTSOURCE>`
 
 Validates that the HTTP server correctly serves files downloaded by the
 controller and stored at `/opt/isoboot/files/{bootMedia}/`.
