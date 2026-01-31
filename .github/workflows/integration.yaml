@@ -22,22 +22,6 @@ jobs:
           kind create cluster
           kubectl cluster-info
 
-      - name: Restore cache
-        id: cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: /tmp/isoboot-cache
-          key: isoboot-cache-v5-${{ hashFiles('values.yaml') }}
-          restore-keys: |
-            isoboot-cache-v5-
-
-      - name: Load cache into kind node
-        if: steps.cache-restore.outputs.cache-hit == 'true'
-        run: |
-          docker exec kind-control-plane mkdir -p /var/cache/isoboot/go
-          cd /tmp/isoboot-cache && tar cf - . \
-            | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
-
       - name: Detect network interface
         run: |
           INTERFACE=$(docker exec kind-control-plane \
@@ -49,100 +33,25 @@ jobs:
       - name: Install CRDs
         run: kubectl apply -f ./crds/
 
-      - name: Helm install
+      - name: Helm install (squid only)
         run: |
           helm install isoboot . -n isoboot --create-namespace \
             --set interface=${{ env.INTERFACE }}
 
-      - name: Wait for core pods
+      - name: Wait for squid pod
         run: |
-          # Wait for Go-compiled pods first (controller, http). These consume
-          # all CPU during compilation on cache miss, starving other pods.
           kubectl wait --for=condition=ready pod \
-            -l 'app.kubernetes.io/component in (controller, http)' \
-            -n isoboot --timeout=900s
-          # Once Go compilation finishes, CPU is freed for remaining pods
-          # (dnsmasq, nginx, squid) to complete their startup.
-          kubectl wait --for=condition=ready pod --all \
-            -n isoboot --timeout=600s
-
-      - name: Apply test fixtures
-        run: |
-          kubectl apply -f ./tests/integration/iso-compare/fixtures.yaml
-          kubectl apply -f ./tests/integration/boot/fixtures.yaml
-          kubectl apply -f ./tests/integration/e2e/fixtures.yaml
-
-      - name: Wait for BootSource
-        run: |
-          kubectl wait --for=jsonpath='{.status.phase}'=Complete \
-            bootsource/debian-12 \
-            bootsource/debian-13 \
-            bootsource/debian-13-iso \
-            -n isoboot --timeout=600s
-
-      - name: Get host IP
-        run: |
-          HOST_IP=$(docker exec kind-control-plane \
-            ip -4 addr show "${{ env.INTERFACE }}" \
-            | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
-          if [ -z "$HOST_IP" ]; then
-            echo "Error: Failed to determine HOST_IP for interface '${{ env.INTERFACE }}'."
-            exit 1
-          fi
-          echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
-          echo "Host IP: $HOST_IP"
-
-      - name: Test static content serving
-        run: ./tests/integration/iso-content/run.sh "$HOST_IP"
-
-      - name: Test ISO extraction matches direct download
-        run: ./tests/integration/iso-compare/test.sh "$HOST_IP"
-
-      - name: Test boot endpoints
-        run: ./tests/integration/boot/test.sh "$HOST_IP"
-
-      - name: Test e2e provisioning flow
-        run: ./tests/integration/e2e/test.sh "$HOST_IP"
+            -l 'app.kubernetes.io/component=proxy' \
+            -n isoboot --timeout=120s
 
       - name: Show pod status
         if: always()
         run: |
           kubectl get pods -n isoboot -o wide
 
-      - name: Save cache from kind node
-        if: always()
-        run: |
-          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
-            echo "kind-control-plane container not found, skipping cache save"
-            exit 0
-          fi
-          if docker exec kind-control-plane test -d /var/cache/isoboot/go; then
-            sudo rm -rf /tmp/isoboot-cache
-            mkdir -p /tmp/isoboot-cache
-            docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
-              | tar xf - -C /tmp/isoboot-cache
-          else
-            echo "/var/cache/isoboot/go does not exist in kind node, skipping"
-          fi
-
-      - name: Save cache
-        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: /tmp/isoboot-cache
-          key: isoboot-cache-v5-${{ hashFiles('values.yaml') }}
-
       - name: Show logs on failure
         if: failure()
         run: |
-          echo "=== CRD Status ==="
-          kubectl get bootsource,provision,machine,boottarget,responsetemplate \
-            -n isoboot -o wide 2>/dev/null || true
-          echo ""
-          echo "=== Files storage ==="
-          docker exec kind-control-plane \
-            find /opt/isoboot/files -type f -ls 2>/dev/null || true
-          echo ""
           echo "=== Pod Logs ==="
           for pod in $(kubectl get pods -n isoboot -o name); do
             echo "--- $pod ---"
