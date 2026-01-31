@@ -48,7 +48,7 @@ spec:
 
               echo "Generating squid config..."
               cat > /etc/squid/squid.conf << SQUID_EOF
-              http_port {{ .Values.proxy.port }}
+              http_port 18080
 
               # Cache settings
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
