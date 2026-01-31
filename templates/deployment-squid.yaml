@@ -54,7 +54,7 @@ spec:
               cat > /etc/squid/squid.conf << SQUID_EOF
               # Limit fd table allocation - default uses ulimit -n which can be 1M+
               # in containers, causing ~400MB+ burst allocation at comm_init()
-              max_filedesc 4096
+              max_filedesc 65536
 
               http_port {{ .Values.proxy.port }}
 
@@ -62,7 +62,6 @@ spec:
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
               cache_mem 16 MB
-              memory_pools off
 
               # Allow RFC1918 private networks
               acl localnet src 10.0.0.0/8
