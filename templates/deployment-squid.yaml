@@ -40,17 +40,15 @@ spec:
               SUBNET="${NETWORK}/${PREFIX}"
               echo "Detected subnet: ${SUBNET}"
 
-              echo "Setting up cache directory..."
+              echo "Setting up cache and log directories..."
               mkdir -p /var/spool/squid
               chown squid:squid /var/spool/squid
+              mkdir -p /var/log/squid
+              chown squid:squid /var/log/squid
 
               echo "Generating squid config..."
               cat > /etc/squid/squid.conf << SQUID_EOF
               http_port {{ .Values.proxy.port }}
-
-              # Log to stderr/stdout for container visibility
-              cache_log stdio:/dev/stderr
-              access_log stdio:/dev/stdout
 
               # Cache settings
               cache_dir ufs /var/spool/squid {{ .Values.proxy.cacheSize }} 16 256
