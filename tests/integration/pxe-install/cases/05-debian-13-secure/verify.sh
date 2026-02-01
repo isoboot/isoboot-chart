@@ -95,6 +95,8 @@ SSH_CMD=(ssh -i "${CASE_WORK}/id_ed25519"
   -o UserKnownHostsFile="${KNOWN_HOSTS}"
   -o GlobalKnownHostsFile=/dev/null
   -o ConnectTimeout=10
+  -o BatchMode=yes
+  -o PreferredAuthentications=publickey
   "${USERNAME}@${IP}")
 
 # --- OS version ---

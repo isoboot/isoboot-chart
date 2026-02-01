@@ -312,6 +312,8 @@ EOF
           -o StrictHostKeyChecking=no \
           -o UserKnownHostsFile=/dev/null \
           -o ConnectTimeout=5 \
+          -o BatchMode=yes \
+          -o PreferredAuthentications=publickey \
           "${username}@${vm_ip}" "true" 2>/dev/null; then
           echo "SSH is available! (key auth)"
           break
@@ -358,6 +360,9 @@ EOF
     ssh -i "$ssh_key_file" \
       -o StrictHostKeyChecking=no \
       -o UserKnownHostsFile=/dev/null \
+      -o ConnectTimeout=10 \
+      -o BatchMode=yes \
+      -o PreferredAuthentications=publickey \
       "${username}@${vm_ip}" \
       "echo '${password}' | sudo -S poweroff" 2>/dev/null || true
   else
