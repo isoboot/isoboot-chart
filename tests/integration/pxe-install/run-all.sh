@@ -121,6 +121,14 @@ run_case() {
     mapfile -t extra_cm_args < <("${case_dir}/pre-configmap.sh" "$case_work")
   fi
 
+  # --- Run pre-secret hook (optional) ---
+  # The hook can create a Kubernetes Secret and print its name to stdout.
+  local secret_name=""
+  if [ -f "${case_dir}/pre-secret.sh" ]; then
+    echo "Running pre-secret hook..."
+    secret_name=$("${case_dir}/pre-secret.sh" "$case_work")
+  fi
+
   # --- Create ConfigMap ---
   echo "Creating ConfigMap..."
   kubectl create configmap "pxe-test-config" -n isoboot \
@@ -152,6 +160,8 @@ spec:
   responseTemplateRef: pxe-test-preseed
   configMaps:
     - pxe-test-config
+$([ -n "$secret_name" ] && echo "  secrets:
+    - ${secret_name}")
 EOF
 
   # --- Create QEMU disk ---
@@ -335,6 +345,7 @@ cleanup_case() {
   kubectl delete responsetemplate/pxe-test-preseed -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete machine/pxe-test-vm.local -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete secret/pxe-test-secret -n isoboot --ignore-not-found --wait 2>/dev/null || true
 
   # Kill any leftover QEMU
   local case_work="${WORK_DIR}/${case_name}"
