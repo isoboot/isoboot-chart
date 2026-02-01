@@ -110,16 +110,23 @@ fi
 # ---------------------------------------------------------------------------
 echo "=== Step 4b: Mounting ramdisks ==="
 
-# Squid cache ramdisk (1GB inside kind node)
+# Squid cache ramdisk (3GB inside kind node)
 docker exec kind-control-plane mkdir -p /var/cache/isoboot/squid
-docker exec kind-control-plane mount -t tmpfs -o size=1G tmpfs /var/cache/isoboot/squid
-echo "Squid cache ramdisk mounted (1GB)"
+if ! docker exec kind-control-plane mount -t tmpfs -o size=3G tmpfs /var/cache/isoboot/squid; then
+  echo "WARNING: Failed to mount squid cache ramdisk, continuing without it"
+else
+  echo "Squid cache ramdisk mounted (3GB)"
+fi
 
 # QCOW2 disk ramdisk (8GB on host — 4GB per parallel VM)
 RAMDISK_DIR="${WORK_DIR}/ramdisk"
 mkdir -p "$RAMDISK_DIR"
-mount -t tmpfs -o size=8G tmpfs "$RAMDISK_DIR"
-echo "QCOW2 ramdisk mounted at $RAMDISK_DIR (8GB)"
+if ! mount -t tmpfs -o size=8G tmpfs "$RAMDISK_DIR"; then
+  echo "WARNING: Failed to mount QCOW2 ramdisk, continuing without it"
+  RAMDISK_DIR=""
+else
+  echo "QCOW2 ramdisk mounted at $RAMDISK_DIR (8GB)"
+fi
 
 # ---------------------------------------------------------------------------
 # Step 5 — Connect kind container to bridge via veth

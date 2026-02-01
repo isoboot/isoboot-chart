@@ -550,12 +550,22 @@ for ((i=0; i<${#cases[@]}; i+=2)); do
     echo "  SOLO: ${case_name_a}"
     echo "================================================================"
 
+    run_case_logged "$case_dir_a" "$case_num_a"
+
+    # Display output
+    echo ""
+    echo "================================================================"
+    echo "  OUTPUT: ${case_name_a}"
+    echo "================================================================"
+    cat "${WORK_DIR}/${case_name_a}/output.log" 2>/dev/null || echo "(no output)"
+
+    # Record result
     CASE_NAMES+=("$case_name_a")
-    if run_case "$case_dir_a" "$case_num_a"; then
-      CASE_RESULTS+=("PASS")
+    result_a=$(cat "${WORK_DIR}/${case_name_a}/result" 2>/dev/null || echo "FAIL")
+    CASE_RESULTS+=("$result_a")
+    if [ "$result_a" = "PASS" ]; then
       PASSED=$((PASSED + 1))
     else
-      CASE_RESULTS+=("FAIL")
       FAILED=$((FAILED + 1))
     fi
 

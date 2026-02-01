@@ -29,6 +29,8 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^kind-control-plane$';
     docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
       | tar xf - -C /tmp/isoboot-cache
   fi
+  # Unmount squid ramdisk inside kind node before cluster deletion
+  docker exec kind-control-plane umount /var/cache/isoboot/squid 2>/dev/null || true
 fi
 
 # Delete kind cluster
@@ -49,7 +51,7 @@ umount "${WORK_DIR}/ramdisk" 2>/dev/null || true
 # Remove network resources
 ip link del veth-kind-br 2>/dev/null || true
 # Clean up any tap devices from parallel test runs
-for tap in $(ip -o link show 2>/dev/null | grep -o 'tap-[0-9]*' || true); do
+for tap in $(ip -o link show 2>/dev/null | grep -o 'tap-[0-9][0-9]*' || true); do
   ip link del "$tap" 2>/dev/null || true
 done
 
