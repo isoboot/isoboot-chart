@@ -159,6 +159,7 @@ EOF
   qemu-img create -f qcow2 "$disk" "$QEMU_DISK_SIZE"
 
   # --- Create tap device ---
+  ip link del tap-vm 2>/dev/null || true
   ip tuntap add dev tap-vm mode tap
   ip link set tap-vm master "$BRIDGE"
   ip link set tap-vm up

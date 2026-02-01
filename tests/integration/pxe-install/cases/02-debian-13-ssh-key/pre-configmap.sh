@@ -8,6 +8,7 @@ set -euo pipefail
 CASE_WORK="$1"
 
 ssh-keygen -t ed25519 -f "${CASE_WORK}/id_ed25519" -N "" -q
+chmod 600 "${CASE_WORK}/id_ed25519"
 PUBLIC_KEY=$(cat "${CASE_WORK}/id_ed25519.pub")
 
 echo "--from-literal=sshPublicKey=${PUBLIC_KEY}"
