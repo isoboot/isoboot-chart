@@ -366,7 +366,8 @@ while [ "$ELAPSED" -lt "$INSTALL_TIMEOUT" ]; do
     -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
   SQUID_SIZE=$(docker exec kind-control-plane \
     du -sm /var/cache/isoboot/squid 2>/dev/null | awk '{print $1}' || echo "?")
-  echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid cache: ${SQUID_SIZE} MB)"
+  DISK_SIZE=$(du -sm "$DISK" 2>/dev/null | awk '{print $1}' || echo "?")
+  echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid: ${SQUID_SIZE} MB, disk: ${DISK_SIZE} MB)"
 
   if [ "$STATUS" = "Complete" ]; then
     echo "Provision is Complete!"
