@@ -14,6 +14,6 @@ ssh-keygen -t rsa -b 4096 -f "${CASE_WORK}/ssh_host_rsa_key" -N "" -q -C ""
 kubectl create secret generic pxe-test-secret -n isoboot \
   --from-file=ssh_host_ed25519_key="${CASE_WORK}/ssh_host_ed25519_key" \
   --from-file=ssh_host_ecdsa_key="${CASE_WORK}/ssh_host_ecdsa_key" \
-  --from-file=ssh_host_rsa_key="${CASE_WORK}/ssh_host_rsa_key"
+  --from-file=ssh_host_rsa_key="${CASE_WORK}/ssh_host_rsa_key" >&2
 
 echo "pxe-test-secret"
