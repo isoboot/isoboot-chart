@@ -247,42 +247,33 @@ EOF
     return 1
   fi
 
-  # --- Get VM IP from ARP table (by MAC address) ---
+  # --- Wait for SSH (re-check VM IP from ARP on each attempt) ---
+  # The VM reboots after install, which may change its DHCP lease IP.
   local vm_ip=""
-  local arp_wait=0
-  echo "Looking up VM IP from ARP table (MAC: ${vm_mac})..."
-  while [ "$arp_wait" -lt 60 ]; do
-    vm_ip=$(ip neigh show dev "$BRIDGE" \
-      | grep -i "$vm_mac" \
-      | awk '{print $1}' \
-      | head -1 || true)
-    if [ -n "$vm_ip" ]; then
-      break
-    fi
-    sleep 5
-    arp_wait=$((arp_wait + 5))
-  done
-  if [ -z "$vm_ip" ]; then
-    echo "ERROR: Could not find VM IP in ARP table for MAC ${vm_mac}"
-    cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
-    kill "$qemu_pid" 2>/dev/null || true
-    wait "$qemu_pid" 2>/dev/null || true
-    ip link del tap-vm 2>/dev/null || true
-    return 1
-  fi
-  echo "VM IP: ${vm_ip}"
-
-  # --- Wait for SSH ---
-  echo "Waiting for SSH on ${vm_ip}..."
+  echo "Waiting for SSH (MAC: ${vm_mac})..."
   elapsed=0
   while [ "$elapsed" -lt "$SSH_TIMEOUT" ]; do
-    if sshpass -p "$password" ssh \
-      -o StrictHostKeyChecking=no \
-      -o UserKnownHostsFile=/dev/null \
-      -o ConnectTimeout=5 \
-      "${username}@${vm_ip}" "true" 2>/dev/null; then
-      echo "SSH is available!"
-      break
+    # Refresh VM IP from ARP table each iteration
+    local current_ip
+    current_ip=$(ip neigh show dev "$BRIDGE" \
+      | grep -i "$vm_mac" \
+      | grep -v FAILED \
+      | awk '{print $1}' \
+      | head -1 || true)
+    if [ -n "$current_ip" ] && [ "$current_ip" != "$vm_ip" ]; then
+      vm_ip="$current_ip"
+      echo "  VM IP: ${vm_ip}"
+    fi
+
+    if [ -n "$vm_ip" ]; then
+      if sshpass -p "$password" ssh \
+        -o StrictHostKeyChecking=no \
+        -o UserKnownHostsFile=/dev/null \
+        -o ConnectTimeout=5 \
+        "${username}@${vm_ip}" "true" 2>/dev/null; then
+        echo "SSH is available!"
+        break
+      fi
     fi
     sleep 10
     elapsed=$((elapsed + 10))
@@ -290,7 +281,7 @@ EOF
   done
 
   if [ "$elapsed" -ge "$SSH_TIMEOUT" ]; then
-    echo "ERROR: SSH did not become available within ${SSH_TIMEOUT}s"
+    echo "ERROR: SSH did not become available within ${SSH_TIMEOUT}s (last IP: ${vm_ip:-none})"
     cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true

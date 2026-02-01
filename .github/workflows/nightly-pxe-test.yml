@@ -80,6 +80,35 @@ jobs:
         if: steps.kvm.outputs.available == 'true'
         run: sudo tests/integration/pxe-install/run-all.sh
 
+      - name: Collect debug logs
+        if: failure()
+        run: |
+          sudo mkdir -p /tmp/pxe-install-test/artifacts
+          sudo cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
+          {
+            echo "=== CRD Status ==="
+            kubectl get bootsource,provision,machine,boottarget,responsetemplate \
+              -n isoboot -o wide 2>/dev/null || true
+            echo ""
+            echo "=== Pod Status ==="
+            kubectl get pods -n isoboot -o wide 2>/dev/null || true
+            echo ""
+            echo "=== Pod Logs ==="
+            for pod in $(kubectl get pods -n isoboot -o name 2>/dev/null); do
+              echo "--- $pod ---"
+              kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
+            done
+          } | sudo tee /tmp/pxe-install-test/artifacts/kubernetes.log > /dev/null 2>&1
+          sudo chmod -R a+r /tmp/pxe-install-test/artifacts/
+
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pxe-test-logs
+          path: /tmp/pxe-install-test/artifacts/
+          retention-days: 14
+
       - name: Teardown
         if: always() && steps.kvm.outputs.available == 'true'
         run: sudo tests/integration/pxe-install/teardown.sh
@@ -115,32 +144,3 @@ jobs:
           if ! gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-pxe-test; then
             echo "::warning::Failed to remove run-pxe-test label — re-apply manually to re-trigger"
           fi
-
-      - name: Collect debug logs
-        if: failure()
-        run: |
-          sudo mkdir -p /tmp/pxe-install-test/artifacts
-          sudo cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
-          {
-            echo "=== CRD Status ==="
-            kubectl get bootsource,provision,machine,boottarget,responsetemplate \
-              -n isoboot -o wide 2>/dev/null || true
-            echo ""
-            echo "=== Pod Status ==="
-            kubectl get pods -n isoboot -o wide 2>/dev/null || true
-            echo ""
-            echo "=== Pod Logs ==="
-            for pod in $(kubectl get pods -n isoboot -o name 2>/dev/null); do
-              echo "--- $pod ---"
-              kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
-            done
-          } | sudo tee /tmp/pxe-install-test/artifacts/kubernetes.log > /dev/null 2>&1
-          sudo chmod -R a+r /tmp/pxe-install-test/artifacts/
-
-      - name: Upload debug artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pxe-test-logs
-          path: /tmp/pxe-install-test/artifacts/
-          retention-days: 14
