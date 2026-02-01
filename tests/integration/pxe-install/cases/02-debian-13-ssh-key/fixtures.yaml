@@ -1,0 +1,40 @@
+apiVersion: isoboot.io/v1alpha1
+kind: Machine
+metadata:
+  name: pxe-test-vm.local
+  namespace: isoboot
+spec:
+  mac: "52-54-00-12-34-56"
+---
+apiVersion: isoboot.io/v1alpha1
+kind: ResponseTemplate
+metadata:
+  name: pxe-test-preseed
+  namespace: isoboot
+spec:
+  files:
+    preseed.cfg: |
+      tasksel tasksel/first multiselect standard, ssh-server
+      d-i debian-installer/language string {{ .language }}
+      d-i debian-installer/country string {{ .country }}
+      d-i keyboard-configuration/xkb-keymap select {{ .keyboard }}
+      d-i passwd/root-login boolean {{ .loginAsRoot }}
+      d-i passwd/user-fullname string {{ .fullName }}
+      d-i passwd/username string {{ .username }}
+      d-i passwd/user-password-crypted password {{ .password }}
+      d-i time/zone string {{ .timezone }}
+      d-i partman-auto/disk string /dev/vda
+      d-i partman-auto/method string regular
+      d-i partman-auto/choose_recipe select atomic
+      d-i partman/choose_partition select finish
+      d-i partman/confirm_nooverwrite boolean true
+      d-i partman/confirm boolean true
+      d-i grub-installer/only_debian boolean true
+      d-i finish-install/reboot_in_progress note
+      d-i preseed/late_command string \
+        in-target mkdir -p /home/{{ .username }}/.ssh && \
+        in-target chmod 700 /home/{{ .username }}/.ssh && \
+        echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
+        in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
+        in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
+        wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }}

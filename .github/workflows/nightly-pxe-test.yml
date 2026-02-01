@@ -72,9 +72,17 @@ jobs:
           restore-keys: |
             isoboot-cache-v6-
 
-      - name: Run PXE install test
+      - name: Setup cluster
         if: steps.kvm.outputs.available == 'true'
-        run: sudo tests/integration/pxe-install/test.sh
+        run: sudo tests/integration/pxe-install/setup.sh
+
+      - name: Run all PXE install tests
+        if: steps.kvm.outputs.available == 'true'
+        run: sudo tests/integration/pxe-install/run-all.sh
+
+      - name: Teardown
+        if: always() && steps.kvm.outputs.available == 'true'
+        run: sudo tests/integration/pxe-install/teardown.sh
 
       - name: Save cache from kind node
         if: always() && steps.kvm.outputs.available == 'true'
@@ -111,9 +119,8 @@ jobs:
       - name: Collect debug logs
         if: failure()
         run: |
-          mkdir -p /tmp/pxe-test-artifacts
-          cp /tmp/pxe-install-test/serial.log /tmp/pxe-test-artifacts/ 2>/dev/null || true
-          cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-test-artifacts/ 2>/dev/null || true
+          mkdir -p /tmp/pxe-install-test/artifacts
+          cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
           {
             echo "=== CRD Status ==="
             kubectl get bootsource,provision,machine,boottarget,responsetemplate \
@@ -127,12 +134,12 @@ jobs:
               echo "--- $pod ---"
               kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
             done
-          } > /tmp/pxe-test-artifacts/kubernetes.log 2>&1
+          } > /tmp/pxe-install-test/artifacts/kubernetes.log 2>&1
 
       - name: Upload debug artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: pxe-test-logs
-          path: /tmp/pxe-test-artifacts/
+          path: /tmp/pxe-install-test/artifacts/
           retention-days: 14
