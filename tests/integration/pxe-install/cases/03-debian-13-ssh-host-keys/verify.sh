@@ -47,6 +47,7 @@ echo "Verifying SSH with strict host key checking..."
 if sshpass -p "$PASSWORD" ssh \
   -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile="${KNOWN_HOSTS}" \
+  -o GlobalKnownHostsFile=/dev/null \
   -o ConnectTimeout=10 \
   "${USERNAME}@${IP}" "true"; then
   echo "OK: SSH connected with strict host key checking — host keys verified"
@@ -58,6 +59,7 @@ fi
 SSH_CMD=(sshpass -p "$PASSWORD" ssh
   -o StrictHostKeyChecking=yes
   -o UserKnownHostsFile="${KNOWN_HOSTS}"
+  -o GlobalKnownHostsFile=/dev/null
   -o ConnectTimeout=10
   "${USERNAME}@${IP}")
 
