@@ -43,9 +43,6 @@ if [ -n "$DNSMASQ_PID" ] && kill -0 "$DNSMASQ_PID" 2>/dev/null; then
   kill "$DNSMASQ_PID" 2>/dev/null || true
 fi
 
-# Unmount ramdisks
-umount "${WORK_DIR}/ramdisk" 2>/dev/null || true
-
 # Remove network resources
 ip link del veth-kind-br 2>/dev/null || true
 # Clean up any tap devices from parallel test runs

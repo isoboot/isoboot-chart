@@ -105,20 +105,7 @@ if [ -d /tmp/isoboot-cache ] && [ "$(ls -A /tmp/isoboot-cache 2>/dev/null)" ]; t
   cd "$SCRIPT_DIR"
 fi
 
-# ---------------------------------------------------------------------------
-# Step 4b — Mount QCOW2 ramdisk
-# ---------------------------------------------------------------------------
-echo "=== Step 4b: Mounting QCOW2 ramdisk ==="
-
-# QCOW2 disk ramdisk (8GB on host — 4GB per parallel VM)
-RAMDISK_DIR="${WORK_DIR}/ramdisk"
-mkdir -p "$RAMDISK_DIR"
-if ! mount -t tmpfs -o size=8G tmpfs "$RAMDISK_DIR"; then
-  echo "WARNING: Failed to mount QCOW2 ramdisk, continuing without it"
-  RAMDISK_DIR=""
-else
-  echo "QCOW2 ramdisk mounted at $RAMDISK_DIR (8GB)"
-fi
+RAMDISK_DIR=""
 
 # ---------------------------------------------------------------------------
 # Step 5 — Connect kind container to bridge via veth
