@@ -2,6 +2,8 @@ name: Integration Test
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
   push:
     branches: [main]
 
@@ -11,43 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for docs-only changes
-        id: check-files
-        if: github.event_name == 'pull_request'
-        run: |
-          FILES=$(gh pr diff ${{ github.event.pull_request.number }} --name-only)
-          NON_DOCS=$(echo "$FILES" | grep -v '\.md$' || true)
-          if [ -z "$NON_DOCS" ]; then
-            echo "docs_only=true" >> "$GITHUB_OUTPUT"
-            echo "All changed files are .md — skipping integration test"
-          else
-            echo "docs_only=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Install kind
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
           chmod +x ./kind
           sudo mv ./kind /usr/local/bin/kind
 
       - name: Create kind cluster
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           kind create cluster
           kubectl cluster-info
 
       - name: Extract commit
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           COMMIT=$(grep '^commit:' values.yaml | awk '{print $2}' | tr -d '"')
           echo "COMMIT=$COMMIT" >> "$GITHUB_ENV"
           echo "Commit: $COMMIT"
 
       - name: Restore cache
-        if: steps.check-files.outputs.docs_only != 'true'
         id: cache-restore
         uses: actions/cache/restore@v4
         with:
@@ -57,14 +40,13 @@ jobs:
             isoboot-cache-v6-
 
       - name: Load cache into kind node
-        if: steps.check-files.outputs.docs_only != 'true' && steps.cache-restore.outputs.cache-hit == 'true'
+        if: steps.cache-restore.outputs.cache-hit == 'true'
         run: |
           docker exec kind-control-plane mkdir -p /var/cache/isoboot/go
           cd /tmp/isoboot-cache && tar cf - . \
             | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
 
       - name: Detect network interface
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           INTERFACE=$(docker exec kind-control-plane \
             ip -4 route list default | awk '{print $5}')
@@ -73,30 +55,25 @@ jobs:
           echo "Detected interface: $INTERFACE"
 
       - name: Install CRDs
-        if: steps.check-files.outputs.docs_only != 'true'
         run: kubectl apply -f ./crds/
 
       - name: Helm install
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           helm install isoboot . -n isoboot --create-namespace \
             --set interface=${{ env.INTERFACE }}
 
       - name: Wait for pods
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           kubectl wait --for=condition=ready pod --all \
             -n isoboot --timeout=900s
 
       - name: Apply test fixtures
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           kubectl apply -f ./tests/integration/iso-compare/fixtures.yaml
           kubectl apply -f ./tests/integration/boot/fixtures.yaml
           kubectl apply -f ./tests/integration/e2e/fixtures.yaml
 
       - name: Wait for BootSource
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           kubectl wait --for=jsonpath='{.status.phase}'=Complete \
             bootsource/debian-12 \
@@ -105,7 +82,6 @@ jobs:
             -n isoboot --timeout=600s
 
       - name: Get host IP
-        if: steps.check-files.outputs.docs_only != 'true'
         run: |
           HOST_IP=$(docker exec kind-control-plane \
             ip -4 addr show "${{ env.INTERFACE }}" \
@@ -118,28 +94,24 @@ jobs:
           echo "Host IP: $HOST_IP"
 
       - name: Test static content serving
-        if: steps.check-files.outputs.docs_only != 'true'
         run: ./tests/integration/iso-content/run.sh "$HOST_IP"
 
       - name: Test ISO extraction matches direct download
-        if: steps.check-files.outputs.docs_only != 'true'
         run: ./tests/integration/iso-compare/test.sh "$HOST_IP"
 
       - name: Test boot endpoints
-        if: steps.check-files.outputs.docs_only != 'true'
         run: ./tests/integration/boot/test.sh "$HOST_IP"
 
       - name: Test e2e provisioning flow
-        if: steps.check-files.outputs.docs_only != 'true'
         run: ./tests/integration/e2e/test.sh "$HOST_IP"
 
       - name: Show pod status
-        if: always() && steps.check-files.outputs.docs_only != 'true'
+        if: always()
         run: |
           kubectl get pods -n isoboot -o wide
 
       - name: Save cache from kind node
-        if: always() && steps.check-files.outputs.docs_only != 'true'
+        if: always()
         run: |
           if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
             echo "kind-control-plane container not found, skipping cache save"
@@ -155,14 +127,14 @@ jobs:
           fi
 
       - name: Save cache
-        if: always() && steps.check-files.outputs.docs_only != 'true' && steps.cache-restore.outputs.cache-hit != 'true'
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v6-${{ env.COMMIT }}
 
       - name: Show logs on failure
-        if: failure() && steps.check-files.outputs.docs_only != 'true'
+        if: failure()
         run: |
           echo "=== CRD Status ==="
           kubectl get bootsource,provision,machine,boottarget,responsetemplate \
