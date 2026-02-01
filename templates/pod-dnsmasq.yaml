@@ -33,7 +33,7 @@ spec:
 
           echo "Downloading iPXE binaries..."
           wget -O /tftpboot/undionly.kpxe https://boot.ipxe.org/undionly.kpxe
-          wget -O /tftpboot/ipxe.efi https://boot.ipxe.org/ipxe.efi
+          wget -O /tftpboot/ipxe.efi https://boot.ipxe.org/x86_64-efi/ipxe.efi
 
           echo "iPXE files:"
           ls -la /tftpboot/
