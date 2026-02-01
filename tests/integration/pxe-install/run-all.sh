@@ -96,9 +96,9 @@ run_case() {
   # --- Read case config (optional config.env in case dir) ---
   local provision_name="pxe-test-${case_name}"
   local boot_target="debian-13-no-firmware"
-  local vm_name="pxe-test-vm.local"
+  local vm_name="pxe-test-vm-${case_num}.local"
   local username="isoboot"
-  local expected_hostname="pxe-test-vm"
+  local expected_hostname="pxe-test-vm-${case_num}"
   local expected_domain="local"
   if [ -f "${case_dir}/config.env" ]; then
     # shellcheck disable=SC1091
@@ -121,6 +121,14 @@ run_case() {
     mapfile -t extra_cm_args < <("${case_dir}/pre-configmap.sh" "$case_work")
   fi
 
+  # --- Run pre-secret hook (optional) ---
+  # The hook can create a Kubernetes Secret and print its name to stdout.
+  local secret_name=""
+  if [ -f "${case_dir}/pre-secret.sh" ]; then
+    echo "Running pre-secret hook..."
+    secret_name=$("${case_dir}/pre-secret.sh" "$case_work")
+  fi
+
   # --- Create ConfigMap ---
   echo "Creating ConfigMap..."
   kubectl create configmap "pxe-test-config" -n isoboot \
@@ -136,7 +144,7 @@ run_case() {
 
   # --- Apply fixtures (substitute MAC placeholder) ---
   echo "Applying fixtures..."
-  sed "s/\${MAC}/${vm_mac_dash}/g" "${case_dir}/fixtures.yaml" | kubectl apply -f -
+  sed -e "s/\${MAC}/${vm_mac_dash}/g" -e "s/\${VM_NAME}/${vm_name}/g" "${case_dir}/fixtures.yaml" | kubectl apply -f -
 
   # --- Create Provision ---
   echo "Creating Provision..."
@@ -152,7 +160,27 @@ spec:
   responseTemplateRef: pxe-test-preseed
   configMaps:
     - pxe-test-config
+$([ -n "$secret_name" ] && echo "  secrets:
+    - ${secret_name}")
 EOF
+
+  # --- Verify resources before launching VM ---
+  if [ -n "$secret_name" ]; then
+    echo "Verifying secret '${secret_name}'..."
+    kubectl get secret/"${secret_name}" -n isoboot \
+      -o go-template='{{range $k, $v := .data}}  key: {{$k}} ({{len $v}} chars base64){{"\n"}}{{end}}'
+  fi
+  echo "Verifying preseed rendering..."
+  local preseed_url="http://${KIND_IP}:8080/dynamic/answer/${provision_name}/preseed.cfg"
+  local http_code
+  http_code=$(curl -s -o "${case_work}/rendered-preseed.cfg" -w '%{http_code}' "$preseed_url" 2>/dev/null || echo "000")
+  if [ "$http_code" = "200" ]; then
+    echo "  Preseed rendered OK ($(wc -c < "${case_work}/rendered-preseed.cfg") bytes)"
+    cp "${case_work}/rendered-preseed.cfg" "${case_artifacts}/"
+  else
+    echo "  WARNING: Preseed rendering returned HTTP ${http_code} (URL: ${preseed_url})"
+    head -5 "${case_work}/rendered-preseed.cfg" 2>/dev/null || true
+  fi
 
   # --- Create QEMU disk ---
   local disk="${case_work}/disk.qcow2"
@@ -328,13 +356,16 @@ EOF
 # ---------------------------------------------------------------------------
 cleanup_case() {
   local case_name="$1"
+  local case_num=$((10#${case_name%%-*}))
   local provision_name="pxe-test-${case_name}"
+  local vm_name="pxe-test-vm-${case_num}.local"
 
   echo "Cleaning up resources for ${case_name}..."
   kubectl delete provision/"${provision_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete responsetemplate/pxe-test-preseed -n isoboot --ignore-not-found --wait 2>/dev/null || true
-  kubectl delete machine/pxe-test-vm.local -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete machine/"${vm_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete secret/pxe-test-secret -n isoboot --ignore-not-found --wait 2>/dev/null || true
 
   # Kill any leftover QEMU
   local case_work="${WORK_DIR}/${case_name}"
