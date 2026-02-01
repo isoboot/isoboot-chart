@@ -1,7 +1,7 @@
 apiVersion: isoboot.io/v1alpha1
 kind: Machine
 metadata:
-  name: pxe-test-vm
+  name: pxe-test-vm.local
   namespace: isoboot
 spec:
   mac: "52-54-00-12-34-56"
@@ -18,7 +18,6 @@ spec:
       d-i debian-installer/language string {{ .language }}
       d-i debian-installer/country string {{ .country }}
       d-i keyboard-configuration/xkb-keymap select {{ .keyboard }}
-      d-i netcfg/get_domain string localdomain
       d-i passwd/root-login boolean {{ .loginAsRoot }}
       d-i passwd/user-fullname string {{ .fullName }}
       d-i passwd/username string {{ .username }}
