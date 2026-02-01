@@ -7,6 +7,9 @@ on:
 
 jobs:
   check-changes:
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     outputs:
       run_tests: ${{ steps.filter.outputs.run_tests }}
@@ -23,7 +26,7 @@ jobs:
             echo "No files changed — running tests as safety measure"
             exit 0
           fi
-          NON_DOCS=$(echo "$FILES" | grep -v '\.md$' || true)
+          NON_DOCS=$(echo "$FILES" | grep -iv '\.md$' || true)
           if [ -z "$NON_DOCS" ]; then
             echo "run_tests=false" >> "$GITHUB_OUTPUT"
             echo "All changed files are .md — skipping integration test"
