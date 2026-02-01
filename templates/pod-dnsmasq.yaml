@@ -8,7 +8,7 @@ spec:
   restartPolicy: Always
   hostNetwork: true
   containers:
-    - name: pxe-server
+    - name: dnsmasq
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
@@ -20,7 +20,7 @@ spec:
           HTTP_PORT="{{ .Values.http.port }}"
 
           echo "Installing dnsmasq, iproute2, and ipcalc..."
-          apk add --no-cache dnsmasq iproute2 ipcalc
+          apk add --no-cache dnsmasq iproute2 ipcalc gettext
 
           echo "Detecting network info from interface ${INTERFACE}..."
           IP_CIDR=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | head -1)
@@ -77,7 +77,9 @@ spec:
           log-dhcp
           DNSMASQ_EOF
           sed -i 's/^          //' /tmp/dnsmasq.conf
-          sed -i "s/\${INTERFACE}/${INTERFACE}/g; s/\${SUBNET}/${SUBNET}/g; s/\${HOST_IP}/${HOST_IP}/g; s/\${HTTP_PORT}/${HTTP_PORT}/g" /tmp/dnsmasq.conf
+          export INTERFACE SUBNET HOST_IP HTTP_PORT
+          envsubst < /tmp/dnsmasq.conf > /tmp/dnsmasq.final.conf
+          mv /tmp/dnsmasq.final.conf /tmp/dnsmasq.conf
 
           echo "dnsmasq config:"
           cat /tmp/dnsmasq.conf

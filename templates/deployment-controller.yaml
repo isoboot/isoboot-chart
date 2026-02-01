@@ -20,7 +20,7 @@ spec:
       serviceAccountName: {{ include "isoboot.fullname" . }}-controller
       containers:
         - name: controller
-          image: "golang:1.25-alpine"
+          image: "{{ .Values.go.image }}"
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
@@ -34,9 +34,9 @@ spec:
               echo "Installing isoboot-controller..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-controller@{{ .Values.commit }}
 
-              echo "Starting isoboot-controller on :8081..."
+              echo "Starting isoboot-controller on :{{ .Values.controller.port }}..."
               exec isoboot-controller \
-                --port="8081" \
+                --port="{{ .Values.controller.port }}" \
                 --namespace="{{ .Release.Namespace }}" \
                 --files-path="/opt/isoboot/files"
           env:
@@ -48,7 +48,7 @@ spec:
               value: /go/cache
           ports:
             - name: grpc
-              containerPort: 8081
+              containerPort: {{ .Values.controller.port }}
               protocol: TCP
           volumeMounts:
             - name: go-cache
@@ -59,14 +59,19 @@ spec:
             {{- toYaml .Values.controller.resources | nindent 12 }}
           livenessProbe:
             tcpSocket:
-              port: 8081
+              port: {{ .Values.controller.port }}
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
             tcpSocket:
-              port: 8081
+              port: {{ .Values.controller.port }}
             initialDelaySeconds: 10
             periodSeconds: 5
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.controller.port }}
+            failureThreshold: 30
+            periodSeconds: 10
       volumes:
         - name: go-cache
           hostPath:
@@ -89,6 +94,6 @@ spec:
     app.kubernetes.io/component: controller
   ports:
     - name: grpc
-      port: 8081
-      targetPort: 8081
+      port: {{ .Values.controller.port }}
+      targetPort: {{ .Values.controller.port }}
       protocol: TCP

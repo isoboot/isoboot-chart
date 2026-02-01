@@ -101,7 +101,7 @@ spec:
             tcpSocket:
               port: {{ .Values.proxy.port }}
             initialDelaySeconds: 10
-            periodSeconds: 10
+            periodSeconds: 5
       volumes:
         - name: squid-cache
           hostPath:

@@ -5,6 +5,10 @@
 # Go commit to install for both http and controller
 commit: "aa6aba2"
 
+# Go build image for http and controller
+go:
+  image: "golang:1.25-alpine"
+
 # HTTP server for boot files (no k8s access, talks to controller via gRPC)
 http:
   port: 8080        # External port (nginx listens here, used in templates)
@@ -19,6 +23,7 @@ http:
 
 # Controller (manages provisions, talks to k8s API)
 controller:
+  port: 18080  # gRPC port
   resources:
     limits:
       memory: "512Mi"

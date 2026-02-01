@@ -21,7 +21,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: http
-          image: "golang:1.25-alpine"
+          image: "{{ .Values.go.image }}"
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
@@ -29,7 +29,7 @@ spec:
             - |
               set -e
               INTERFACE="{{ required "interface is required" .Values.interface }}"
-              CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:8081"
+              CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controller.port }}"
 
               echo "Installing dependencies..."
               apk add --no-cache git iproute2
@@ -77,6 +77,12 @@ spec:
               port: {{ .Values.http.listenPort }}
             initialDelaySeconds: 10
             periodSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.http.listenPort }}
+            failureThreshold: 30
+            periodSeconds: 10
       volumes:
         - name: go-cache
           hostPath:

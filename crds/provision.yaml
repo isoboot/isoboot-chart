@@ -29,9 +29,11 @@ spec:
               properties:
                 machineRef:
                   type: string
+                  minLength: 1
                   description: Reference to a Machine resource name
                 bootTargetRef:
                   type: string
+                  minLength: 1
                   description: Reference to a BootTarget resource name
                 responseTemplateRef:
                   type: string
