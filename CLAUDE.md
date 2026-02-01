@@ -14,17 +14,31 @@ This repo works alongside `isoboot` (Go code for controller and HTTP server). To
 - **Never force push** - use squash merge at PR merge time
 - PRs required for main branch
 - After merging a PR, delete the local branch (`git branch -d <branch>`). GitHub auto-deletes the remote branch on merge.
-- On publishing a PR, request a Copilot review and poll for the response:
+- **After each commit pushed to a PR**, re-read the PR body (`gh pr view {n} --json body`) and update it if the summary no longer reflects the full set of changes. Use `gh pr edit {n} --body "..."` to update.
+- **Copilot review is MANDATORY for every PR.** After creating a PR, run the full Copilot review loop before telling the user the PR is ready.
+
+  **Step 1 — Request review:**
   ```bash
-  # Request review
   gh api repos/{owner}/{repo}/pulls/{n}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
   ```
-  Poll every 15 seconds for up to 10 minutes. If Copilot doesn't respond within 10 minutes, wait 5 minutes and re-request the review. After 3 consecutive failures, stop and inform the user.
 
-  When Copilot leaves review comments, always reply inline on the thread, then resolve it:
-  - **Addressable**: Fix in the next commit, reply inline referencing the commit, resolve the thread.
+  **Step 2 — Wait for "started reviewing":**
+  Poll the PR timeline every 15 seconds for up to 1 minute, looking for a Copilot review event (use `gh api repos/{owner}/{repo}/pulls/{n}/reviews`). If no review appears within 1 minute, re-request the review (back to Step 1). After 3 consecutive failures to get a review started, stop and inform the user.
+
+  **Step 3 — Wait for review to complete:**
+  Once a review exists, poll every 15 seconds until the review state is no longer `PENDING` (i.e., it becomes `COMMENTED`, `CHANGES_REQUESTED`, or `APPROVED`). Timeout: 10 minutes.
+
+  **Step 4 — Handle comments:**
+  Fetch all review comments (`gh api repos/{owner}/{repo}/pulls/{n}/comments`). For each comment:
+  - **Addressable**: Fix the code, commit, push, reply inline referencing the commit, resolve the thread.
   - **Non-issue**: Reply inline explaining why, resolve the thread.
   - **Out of scope**: Create a GitHub issue, reply inline with "Tracked in #N", resolve the thread.
+
+  **Step 5 — Loop if commits were pushed:**
+  If Step 4 produced new commits, go back to Step 1 and repeat the entire loop. The goal is to reach a Copilot review with zero unresolved comments.
+
+  **Step 6 — Done:**
+  When Copilot returns `APPROVED` or `COMMENTED` with no comments, the review loop is complete. Report the PR URL to the user.
 
 ## Chart Overview
 
@@ -62,13 +76,16 @@ templates/            # Kubernetes resources
 ├── deployment-controller.yaml  # Deployment (auto-restart)
 ├── deployment-http.yaml        # Deployment (port 80, Go server)
 ├── deployment-nginx.yaml       # Deployment (hostNetwork:8080, reverse proxy)
-├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
+├── deployment-squid.yaml       # Deployment (caching proxy)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
-├── bootsource-*.yaml            # BootSource resources (file downloads)
-├── boottarget-*.yaml           # BootTarget resources (boot config)
-└── ...
+├── service-http.yaml           # ClusterIP Service (nginx → Go server)
+├── rbac.yaml                   # ServiceAccount, Role, RoleBinding
+├── configmap-templates.yaml    # ConfigMap for iPXE templates
+├── bootsource-*.yaml           # BootSource resources (file downloads)
+└── boottarget-*.yaml           # BootTarget resources (boot config)
 files/                # Template files loaded via .Files.Get
 └── boottarget-debian-v1.tpl
+examples/             # Provisioning walkthrough examples
 values.yaml
 Chart.yaml
 ```
@@ -93,7 +110,7 @@ kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/{{ .KernelFilenam
 ### CRD Architecture: BootSource + BootTarget
 
 - **BootSource** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
-- **BootTarget** references a BootSource via `bootSourceRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootSource. Names: `debian-12`, `debian-12-no-firmware`.
+- **BootTarget** references a BootSource via `bootSourceRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootSource. Names: `debian-12-with-firmware`, `debian-12-no-firmware`.
 
 BootSource directory layout without firmware (flat):
 ```
@@ -200,6 +217,7 @@ helm install isoboot . --set interface=br1
 # Check logs
 kubectl logs -f deployment/isoboot-controller
 kubectl logs -f deployment/isoboot-http
+kubectl logs -f deployment/isoboot-nginx
 
 # Upgrade (deployments auto-restart)
 helm upgrade isoboot . --set interface=br1

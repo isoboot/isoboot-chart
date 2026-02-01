@@ -63,7 +63,7 @@ Defines how to boot a specific OS/configuration, referencing a BootSource.
 apiVersion: isoboot.io/v1alpha1
 kind: BootTarget
 metadata:
-  name: debian-12
+  name: debian-12-with-firmware
 spec:
   bootSourceRef: debian-12
   useFirmware: true
@@ -84,7 +84,7 @@ metadata:
   name: vm-01-debian-12
 spec:
   machineRef: vm-01.lan
-  bootTargetRef: debian-12
+  bootTargetRef: debian-12-with-firmware
   responseTemplateRef: debian-standard
   configMaps:
     - config-01
@@ -111,5 +111,5 @@ spec:
 
 - Machine: FQDN format (`vm-01.lan`)
 - BootSource: OS version (`debian-12`, `debian-13`)
-- BootTarget: OS version or variant (`debian-12`, `debian-12-no-firmware`)
+- BootTarget: OS version + firmware variant (`debian-12-with-firmware`, `debian-12-no-firmware`)
 - Provision: Machine + BootTarget (`vm-01-debian-12`)
