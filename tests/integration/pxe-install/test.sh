@@ -367,7 +367,9 @@ while [ "$ELAPSED" -lt "$INSTALL_TIMEOUT" ]; do
   SQUID_SIZE=$(docker exec kind-control-plane \
     du -sm /var/cache/isoboot/squid 2>/dev/null | awk '{print $1}' || echo "?")
   DISK_SIZE=$(du -sm "$DISK" 2>/dev/null | awk '{print $1}' || echo "?")
-  echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid: ${SQUID_SIZE} MB, disk: ${DISK_SIZE} MB)"
+  DISK_MOD=$(stat -c %Y "$DISK" 2>/dev/null || echo "0")
+  DISK_AGO=$(( $(date +%s) - DISK_MOD ))
+  echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid: ${SQUID_SIZE} MB, disk: ${DISK_SIZE} MB, written ${DISK_AGO}s ago)"
 
   if [ "$STATUS" = "Complete" ]; then
     echo "Provision is Complete!"
