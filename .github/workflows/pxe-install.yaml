@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils ovmf dnsmasq-base \
-            bridge-utils iproute2 openssh-client sshpass
+            bridge-utils iproute2 openssh-client sshpass netpbm
 
       - name: Install kind
         if: steps.kvm.outputs.available == 'true'
@@ -96,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vm-screen
-          path: /tmp/pxe-install-test/screen.ppm
+          path: /tmp/pxe-install-test/screen.png
           if-no-files-found: ignore
 
       - name: Debug on failure

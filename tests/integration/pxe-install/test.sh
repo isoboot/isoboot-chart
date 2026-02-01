@@ -373,6 +373,7 @@ while [ "$ELAPSED" -lt "$INSTALL_TIMEOUT" ]; do
   echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid: ${SQUID_SIZE} MB, disk: ${DISK_SIZE} MB, written ${DISK_AGO}s ago)"
   # Capture VM screen
   (echo "screendump ${WORK_DIR}/screen.ppm"; sleep 0.5) | nc 127.0.0.1 4444 >/dev/null 2>&1 || true
+  pnmtopng "${WORK_DIR}/screen.ppm" > "${WORK_DIR}/screen.png" 2>/dev/null || true
 
   if [ "$STATUS" = "Complete" ]; then
     echo "Provision is Complete!"
