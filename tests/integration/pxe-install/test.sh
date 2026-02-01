@@ -87,6 +87,11 @@ if [ ! -e /dev/kvm ] || [ ! -w /dev/kvm ]; then
 fi
 echo "KVM is available"
 
+# Generate credentials early so we fail fast on any issues
+PASSWORD=$(head -c 500 /dev/urandom | tr -dc a-z | cut -c1-16)
+PASSWORD_HASH=$(openssl passwd -6 "$PASSWORD")
+echo "Generated password for user 'isoboot' (hash: ${PASSWORD_HASH:0:20}...)"
+
 # ---------------------------------------------------------------------------
 # Step 1 — Find unused subnet
 # ---------------------------------------------------------------------------
@@ -198,13 +203,9 @@ kubectl wait --for=jsonpath='{.status.phase}'=Complete \
 echo "BootSource debian-13 is Complete"
 
 # ---------------------------------------------------------------------------
-# Step 8 — Generate credentials + ConfigMap
+# Step 8 — Create ConfigMap
 # ---------------------------------------------------------------------------
-echo "=== Step 8: Generating credentials ==="
-PASSWORD=$(head -c 500 /dev/urandom | tr -dc a-z | cut -c1-16)
-PASSWORD_HASH=$(openssl passwd -6 "$PASSWORD")
-echo "Generated password for user 'isoboot' (hash: ${PASSWORD_HASH:0:20}...)"
-
+echo "=== Step 8: Creating ConfigMap ==="
 kubectl create configmap pxe-test-config -n isoboot \
   --from-literal=language=en \
   --from-literal=country=US \
