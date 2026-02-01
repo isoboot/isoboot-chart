@@ -129,6 +129,15 @@ run_case() {
     secret_name=$("${case_dir}/pre-secret.sh" "$case_work")
   fi
 
+  # --- Run pre-provision hook (optional) ---
+  # The hook can output extra spec fields for the Provision (one per line,
+  # indented with 4 spaces, e.g., "    machineId: abc123").
+  local extra_provision_spec=""
+  if [ -f "${case_dir}/pre-provision.sh" ]; then
+    echo "Running pre-provision hook..."
+    extra_provision_spec=$("${case_dir}/pre-provision.sh" "$case_work")
+  fi
+
   # --- Create ConfigMap ---
   echo "Creating ConfigMap..."
   kubectl create configmap "pxe-test-config" -n isoboot \
@@ -162,6 +171,7 @@ spec:
     - pxe-test-config
 $([ -n "$secret_name" ] && echo "  secrets:
     - ${secret_name}")
+${extra_provision_spec}
 EOF
 
   # --- Verify resources before launching VM ---
