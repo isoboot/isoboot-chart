@@ -148,7 +148,7 @@ spec:
         chmod 600 /target/etc/ssh/ssh_host_rsa_key && \
         chmod 644 /target/etc/ssh/ssh_host_rsa_key.pub && \
       {{- end }}
-        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }} && \
+        wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }} && \
         echo "Done." >> /target/root/late_command.log
 EOF
 ```
