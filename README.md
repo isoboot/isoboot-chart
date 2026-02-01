@@ -39,8 +39,8 @@ helm install isoboot ./isoboot-chart --set interface=br1
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `image.repository` | `alpine` | Container image repository |
-| `image.tag` | `latest` | Container image tag |
-| `image.pullPolicy` | `Always` | Image pull policy |
+| `image.tag` | `3.23` | Container image tag |
+| `image.pullPolicy` | `IfNotPresent` | Image pull policy |
 | `resources.limits.memory` | `128Mi` | Memory limit |
 | `resources.limits.cpu` | `500m` | CPU limit |
 | `resources.requests.memory` | `64Mi` | Memory request |
@@ -65,9 +65,13 @@ When a PXE client boots:
 
 | Port | Protocol | Purpose |
 |------|----------|---------|
-| 67 | UDP | DHCP (proxy mode) |
-| 69 | UDP | TFTP |
-| 4011 | UDP | PXE proxy DHCP |
+| 67 | UDP | DHCP (proxy mode, dnsmasq) |
+| 69 | UDP | TFTP (dnsmasq) |
+| 80 | TCP | HTTP server (isoboot-http, internal) |
+| 3128 | TCP | Caching proxy (squid) |
+| 4011 | UDP | PXE proxy DHCP (dnsmasq) |
+| 8080 | TCP | Reverse proxy (nginx, external) |
+| 18080 | TCP | gRPC (isoboot-controller) |
 
 ## Uninstall
 
