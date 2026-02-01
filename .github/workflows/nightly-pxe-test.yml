@@ -103,7 +103,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-pxe-test || true
+          if ! gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-pxe-test; then
+            echo "::warning::Failed to remove run-pxe-test label — re-apply manually to re-trigger"
+          fi
 
       - name: Collect debug logs
         if: failure()
