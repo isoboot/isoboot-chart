@@ -79,7 +79,7 @@ templates/            # Kubernetes resources
 ├── deployment-squid.yaml       # Deployment (caching proxy)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
 ├── service-http.yaml           # ClusterIP Service (nginx → Go server)
-├── rbac.yaml                   # ServiceAccount, ClusterRole, ClusterRoleBinding
+├── rbac.yaml                   # ServiceAccount, Role, RoleBinding
 ├── configmap-templates.yaml    # ConfigMap for iPXE templates
 ├── bootsource-*.yaml           # BootSource resources (file downloads)
 └── boottarget-*.yaml           # BootTarget resources (boot config)
