@@ -106,17 +106,9 @@ if [ -d /tmp/isoboot-cache ] && [ "$(ls -A /tmp/isoboot-cache 2>/dev/null)" ]; t
 fi
 
 # ---------------------------------------------------------------------------
-# Step 4b — Mount ramdisks
+# Step 4b — Mount QCOW2 ramdisk
 # ---------------------------------------------------------------------------
-echo "=== Step 4b: Mounting ramdisks ==="
-
-# Squid cache ramdisk (3GB inside kind node)
-docker exec kind-control-plane mkdir -p /var/cache/isoboot/squid
-if ! docker exec kind-control-plane mount -t tmpfs -o size=3G tmpfs /var/cache/isoboot/squid; then
-  echo "WARNING: Failed to mount squid cache ramdisk, continuing without it"
-else
-  echo "Squid cache ramdisk mounted (3GB)"
-fi
+echo "=== Step 4b: Mounting QCOW2 ramdisk ==="
 
 # QCOW2 disk ramdisk (8GB on host — 4GB per parallel VM)
 RAMDISK_DIR="${WORK_DIR}/ramdisk"

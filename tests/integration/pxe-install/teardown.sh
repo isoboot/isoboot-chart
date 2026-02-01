@@ -29,8 +29,6 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^kind-control-plane$';
     docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
       | tar xf - -C /tmp/isoboot-cache
   fi
-  # Unmount squid ramdisk inside kind node before cluster deletion
-  docker exec kind-control-plane umount /var/cache/isoboot/squid 2>/dev/null || true
 fi
 
 # Delete kind cluster
