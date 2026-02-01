@@ -446,7 +446,13 @@ run_case_logged() {
   local case_work="${WORK_DIR}/${case_name}"
   mkdir -p "$case_work"
 
-  if run_case "$case_dir" "$case_num" > "${case_work}/output.log" 2>&1; then
+  # Redirect ALL output for this subshell (called with &) to the log file.
+  # Using exec is more robust than command-level redirect — it captures output
+  # from child processes (ssh, sshpass, verify.sh) that may escape a simple
+  # `cmd > file 2>&1` redirect in background subshells.
+  exec > "${case_work}/output.log" 2>&1
+
+  if run_case "$case_dir" "$case_num"; then
     echo "PASS" > "${case_work}/result"
   else
     echo "FAIL" > "${case_work}/result"
