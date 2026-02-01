@@ -7,7 +7,13 @@ set -euo pipefail
 
 CASE_WORK="$1"
 
+if ! command -v dbus-uuidgen >/dev/null 2>&1; then
+  echo "ERROR: dbus-uuidgen not found (install dbus package)" >&2
+  exit 1
+fi
+
 MACHINE_ID_FILE="${CASE_WORK}/expected-machine-id"
+rm -f "$MACHINE_ID_FILE"
 dbus-uuidgen --ensure="$MACHINE_ID_FILE"
 MACHINE_ID=$(dbus-uuidgen --get="$MACHINE_ID_FILE")
 
