@@ -131,7 +131,7 @@ run_case() {
 
   # --- Run pre-provision hook (optional) ---
   # The hook can output extra spec fields for the Provision (one per line,
-  # indented with 4 spaces, e.g., "    machineId: abc123").
+  # indented with 2 spaces, e.g., "  machineId: abc123").
   local extra_provision_spec=""
   if [ -f "${case_dir}/pre-provision.sh" ]; then
     echo "Running pre-provision hook..."
