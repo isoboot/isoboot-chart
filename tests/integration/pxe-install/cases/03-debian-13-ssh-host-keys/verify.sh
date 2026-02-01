@@ -31,6 +31,8 @@ for key_type in ed25519 ecdsa rsa; do
   echo "${IP} ${KEY_DATA}" >> "$KNOWN_HOSTS"
 done
 
+chmod 644 "$KNOWN_HOSTS" 2>/dev/null || true
+
 if [ "$FAIL" -ne 0 ] || [ ! -s "$KNOWN_HOSTS" ]; then
   echo "FAIL: Cannot perform strict host key verification without valid public keys"
   exit 1
