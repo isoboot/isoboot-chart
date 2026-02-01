@@ -91,6 +91,14 @@ jobs:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v6-${{ env.COMMIT }}
 
+      - name: Upload VM screenshot
+        if: always() && steps.kvm.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-screen
+          path: /tmp/pxe-install-test/screen.ppm
+          if-no-files-found: ignore
+
       - name: Debug on failure
         if: failure()
         run: |
