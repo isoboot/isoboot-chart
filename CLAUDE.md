@@ -14,17 +14,30 @@ This repo works alongside `isoboot` (Go code for controller and HTTP server). To
 - **Never force push** - use squash merge at PR merge time
 - PRs required for main branch
 - After merging a PR, delete the local branch (`git branch -d <branch>`). GitHub auto-deletes the remote branch on merge.
-- On publishing a PR, request a Copilot review and poll for the response:
+- **Copilot review is MANDATORY for every PR.** After creating a PR, run the full Copilot review loop before telling the user the PR is ready.
+
+  **Step 1 — Request review:**
   ```bash
-  # Request review
   gh api repos/{owner}/{repo}/pulls/{n}/requested_reviewers -X POST -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
   ```
-  Poll every 15 seconds for up to 10 minutes. If Copilot doesn't respond within 10 minutes, wait 5 minutes and re-request the review. After 3 consecutive failures, stop and inform the user.
 
-  When Copilot leaves review comments, always reply inline on the thread, then resolve it:
-  - **Addressable**: Fix in the next commit, reply inline referencing the commit, resolve the thread.
+  **Step 2 — Wait for "started reviewing":**
+  Poll the PR timeline every 15 seconds for up to 1 minute, looking for a Copilot review event (use `gh api repos/{owner}/{repo}/pulls/{n}/reviews`). If no review appears within 1 minute, re-request the review (back to Step 1). After 3 consecutive failures to get a review started, stop and inform the user.
+
+  **Step 3 — Wait for review to complete:**
+  Once a review exists, poll every 15 seconds until the review state is no longer `PENDING` (i.e., it becomes `COMMENTED`, `CHANGES_REQUESTED`, or `APPROVED`). Timeout: 10 minutes.
+
+  **Step 4 — Handle comments:**
+  Fetch all review comments (`gh api repos/{owner}/{repo}/pulls/{n}/comments`). For each comment:
+  - **Addressable**: Fix the code, commit, push, reply inline referencing the commit, resolve the thread.
   - **Non-issue**: Reply inline explaining why, resolve the thread.
   - **Out of scope**: Create a GitHub issue, reply inline with "Tracked in #N", resolve the thread.
+
+  **Step 5 — Loop if commits were pushed:**
+  If Step 4 produced new commits, go back to Step 1 and repeat the entire loop. The goal is to reach a Copilot review with zero unresolved comments.
+
+  **Step 6 — Done:**
+  When Copilot returns `APPROVED` or `COMMENTED` with no comments, the review loop is complete. Report the PR URL to the user.
 
 ## Chart Overview
 
