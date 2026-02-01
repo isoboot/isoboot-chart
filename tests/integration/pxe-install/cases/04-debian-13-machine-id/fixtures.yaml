@@ -33,7 +33,7 @@ spec:
       d-i finish-install/reboot_in_progress note
       d-i preseed/late_command string \
       {{- if hasKey . "MachineId" }}
-        echo '{{ .MachineId }}' > /target/etc/machine-id && \
+        echo '{{ .MachineId | b64enc }}' | base64 -d > /target/etc/machine-id && \
         chmod 444 /target/etc/machine-id && \
       {{- end }}
         wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }}

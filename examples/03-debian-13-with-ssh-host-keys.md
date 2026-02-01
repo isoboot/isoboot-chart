@@ -113,7 +113,7 @@ spec:
       {{- if and (hasKey . "sshPublicKey") .sshPublicKey (hasKey . "username") .username }}
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
-        echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
+        echo '{{ .sshPublicKey | b64enc }}' | base64 -d > /target/home/{{ .username }}/.ssh/authorized_keys && \
         in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
         in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
       {{- end }}

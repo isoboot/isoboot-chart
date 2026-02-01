@@ -120,13 +120,13 @@ spec:
       {{- if and (hasKey . "sshPublicKey") .sshPublicKey (hasKey . "username") .username }}
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
-        echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
+        echo '{{ .sshPublicKey | b64enc }}' | base64 -d > /target/home/{{ .username }}/.ssh/authorized_keys && \
         in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
         in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
       {{- end }}
       {{- if hasKey . "MachineId" }}
         echo "Processing Machine Id..." >> /target/root/late_command.log && \
-        echo '{{ .MachineId }}' > /target/etc/machine-id && \
+        echo '{{ .MachineId | b64enc }}' | base64 -d > /target/etc/machine-id && \
         chmod 444 /target/etc/machine-id && \
       {{- end }}
       {{- if and (hasKey . "ssh_host_ed25519_key") (hasKey . "ssh_host_ed25519_key_pub") }}
