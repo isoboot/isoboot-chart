@@ -14,6 +14,7 @@ This repo works alongside `isoboot` (Go code for controller and HTTP server). To
 - **Never force push** - use squash merge at PR merge time
 - PRs required for main branch
 - After merging a PR, delete the local branch (`git branch -d <branch>`). GitHub auto-deletes the remote branch on merge.
+- **After each commit pushed to a PR**, re-read the PR body (`gh pr view {n} --json body`) and update it if the summary no longer reflects the full set of changes. Use `gh pr edit {n} --body "..."` to update.
 - **Copilot review is MANDATORY for every PR.** After creating a PR, run the full Copilot review loop before telling the user the PR is ready.
 
   **Step 1 — Request review:**
