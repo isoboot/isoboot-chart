@@ -1,7 +1,7 @@
 apiVersion: isoboot.io/v1alpha1
 kind: Machine
 metadata:
-  name: pxe-test-vm.local
+  name: ${VM_NAME}
   namespace: isoboot
 spec:
   mac: "${MAC}"

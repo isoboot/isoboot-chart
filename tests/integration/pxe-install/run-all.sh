@@ -96,9 +96,9 @@ run_case() {
   # --- Read case config (optional config.env in case dir) ---
   local provision_name="pxe-test-${case_name}"
   local boot_target="debian-13-no-firmware"
-  local vm_name="pxe-test-vm.local"
+  local vm_name="pxe-test-vm-${case_num}.local"
   local username="isoboot"
-  local expected_hostname="pxe-test-vm"
+  local expected_hostname="pxe-test-vm-${case_num}"
   local expected_domain="local"
   if [ -f "${case_dir}/config.env" ]; then
     # shellcheck disable=SC1091
@@ -144,7 +144,7 @@ run_case() {
 
   # --- Apply fixtures (substitute MAC placeholder) ---
   echo "Applying fixtures..."
-  sed "s/\${MAC}/${vm_mac_dash}/g" "${case_dir}/fixtures.yaml" | kubectl apply -f -
+  sed -e "s/\${MAC}/${vm_mac_dash}/g" -e "s/\${VM_NAME}/${vm_name}/g" "${case_dir}/fixtures.yaml" | kubectl apply -f -
 
   # --- Create Provision ---
   echo "Creating Provision..."
@@ -356,12 +356,14 @@ EOF
 # ---------------------------------------------------------------------------
 cleanup_case() {
   local case_name="$1"
+  local case_num=$((10#${case_name%%-*}))
   local provision_name="pxe-test-${case_name}"
+  local vm_name="pxe-test-vm-${case_num}.local"
 
   echo "Cleaning up resources for ${case_name}..."
   kubectl delete provision/"${provision_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete responsetemplate/pxe-test-preseed -n isoboot --ignore-not-found --wait 2>/dev/null || true
-  kubectl delete machine/pxe-test-vm.local -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete machine/"${vm_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete secret/pxe-test-secret -n isoboot --ignore-not-found --wait 2>/dev/null || true
 
