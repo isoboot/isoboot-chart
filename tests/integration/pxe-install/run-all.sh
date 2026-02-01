@@ -305,9 +305,9 @@ cleanup_case() {
   local provision_name="pxe-test-${case_name}"
 
   echo "Cleaning up resources for ${case_name}..."
-  kubectl delete provision/"${provision_name}" -n isoboot --ignore-not-found 2>/dev/null || true
-  kubectl delete -f "${CASES_DIR}/${case_name}/fixtures.yaml" --ignore-not-found 2>/dev/null || true
-  kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found 2>/dev/null || true
+  kubectl delete provision/"${provision_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete -f "${CASES_DIR}/${case_name}/fixtures.yaml" --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found --wait 2>/dev/null || true
 
   # Kill any leftover QEMU
   local case_work="${WORK_DIR}/${case_name}"
