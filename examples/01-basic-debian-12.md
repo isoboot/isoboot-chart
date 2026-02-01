@@ -26,17 +26,20 @@ spec:
       d-i debian-installer/language string {{ .language }}
       d-i debian-installer/country string {{ .country }}
       d-i keyboard-configuration/xkb-keymap select {{ .keyboard }}
+      d-i netcfg/get_domain string localdomain
       d-i passwd/root-login boolean {{ .loginAsRoot }}
-      d-i passwd/user-fullname {{ .fullName }}
+      d-i passwd/user-fullname string {{ .fullName }}
       d-i passwd/username string {{ .username }}
       d-i passwd/user-password-crypted password {{ .password }}
       d-i time/zone string {{ .timezone }}
       d-i partman-auto/method string regular
+      d-i partman-auto/choose_recipe select atomic
       d-i partman/choose_partition select finish
       d-i partman/confirm_nooverwrite boolean true
       d-i partman/confirm boolean true
+      d-i grub-installer/only_debian boolean true
       d-i finish-install/reboot_in_progress note
-      d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }}
+      d-i preseed/late_command string wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }}
 EOF
 ```
 
