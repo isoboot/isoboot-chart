@@ -32,7 +32,7 @@ spec:
               apk add --no-cache git
 
               echo "Installing isoboot-http..."
-              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.http.commit }}
+              GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.commit }}
 
               echo "Starting isoboot-http on :{{ .Values.http.listenPort }}..."
               echo "Connecting to controller at ${CONTROLLER_ADDR}..."

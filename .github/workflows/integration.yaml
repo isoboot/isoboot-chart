@@ -22,14 +22,20 @@ jobs:
           kind create cluster
           kubectl cluster-info
 
+      - name: Extract commit
+        run: |
+          COMMIT=$(grep '^commit:' values.yaml | awk '{print $2}' | tr -d '"')
+          echo "COMMIT=$COMMIT" >> "$GITHUB_ENV"
+          echo "Commit: $COMMIT"
+
       - name: Restore cache
         id: cache-restore
         uses: actions/cache/restore@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v5-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v6-${{ env.COMMIT }}
           restore-keys: |
-            isoboot-cache-v5-
+            isoboot-cache-v6-
 
       - name: Load cache into kind node
         if: steps.cache-restore.outputs.cache-hit == 'true'
@@ -123,7 +129,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: /tmp/isoboot-cache
-          key: isoboot-cache-v5-${{ hashFiles('values.yaml') }}
+          key: isoboot-cache-v6-${{ env.COMMIT }}
 
       - name: Show logs on failure
         if: failure()

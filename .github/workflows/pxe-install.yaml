@@ -47,9 +47,49 @@ jobs:
         if: steps.kvm.outputs.available == 'true'
         uses: azure/setup-helm@v4
 
+      - name: Extract commit
+        if: steps.kvm.outputs.available == 'true'
+        run: |
+          COMMIT=$(grep '^commit:' values.yaml | awk '{print $2}' | tr -d '"')
+          echo "COMMIT=$COMMIT" >> "$GITHUB_ENV"
+          echo "Commit: $COMMIT"
+
+      - name: Restore cache
+        if: steps.kvm.outputs.available == 'true'
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/isoboot-cache
+          key: isoboot-cache-v6-${{ env.COMMIT }}
+          restore-keys: |
+            isoboot-cache-v6-
+
       - name: Run PXE install test
         if: steps.kvm.outputs.available == 'true'
         run: sudo tests/integration/pxe-install/test.sh
+
+      - name: Save cache from kind node
+        if: always() && steps.kvm.outputs.available == 'true'
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping cache save"
+            exit 0
+          fi
+          if docker exec kind-control-plane test -d /var/cache/isoboot/go; then
+            sudo rm -rf /tmp/isoboot-cache
+            mkdir -p /tmp/isoboot-cache
+            docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
+              | tar xf - -C /tmp/isoboot-cache
+          else
+            echo "/var/cache/isoboot/go does not exist in kind node, skipping"
+          fi
+
+      - name: Save cache
+        if: always() && steps.kvm.outputs.available == 'true' && steps.cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/isoboot-cache
+          key: isoboot-cache-v6-${{ env.COMMIT }}
 
       - name: Debug on failure
         if: failure()

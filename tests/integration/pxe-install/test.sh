@@ -39,6 +39,17 @@ cleanup() {
     wait "$QEMU_PID" 2>/dev/null || true
   fi
 
+  # Save Go build cache from kind node
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^kind-control-plane$'; then
+    if docker exec kind-control-plane test -d /var/cache/isoboot/go 2>/dev/null; then
+      echo "Saving Go build cache from kind node..."
+      sudo rm -rf /tmp/isoboot-cache
+      mkdir -p /tmp/isoboot-cache
+      docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
+        | tar xf - -C /tmp/isoboot-cache
+    fi
+  fi
+
   if command -v kind &>/dev/null; then
     echo "Deleting kind cluster"
     kind delete cluster 2>/dev/null || true
@@ -159,6 +170,15 @@ echo "dnsmasq started (PID $DNSMASQ_PID)"
 echo "=== Step 4: Creating kind cluster ==="
 kind create cluster --wait 60s
 echo "Kind cluster ready"
+
+# Load Go build cache into kind node
+if [ -d /tmp/isoboot-cache ] && [ "$(ls -A /tmp/isoboot-cache 2>/dev/null)" ]; then
+  echo "Loading Go build cache into kind node..."
+  docker exec kind-control-plane mkdir -p /var/cache/isoboot/go
+  cd /tmp/isoboot-cache && tar cf - . \
+    | docker exec -i kind-control-plane tar xf - -C /var/cache/isoboot/go
+  cd "$SCRIPT_DIR"
+fi
 
 # ---------------------------------------------------------------------------
 # Step 5 — Connect kind container to bridge via veth
@@ -344,7 +364,9 @@ POLL_INTERVAL=30
 while [ "$ELAPSED" -lt "$INSTALL_TIMEOUT" ]; do
   STATUS=$(kubectl get provision/"${PROVISION_NAME}" -n isoboot \
     -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-  echo "  [${ELAPSED}s] Provision status: ${STATUS}"
+  SQUID_SIZE=$(docker exec kind-control-plane \
+    du -sm /var/cache/isoboot/squid 2>/dev/null | awk '{print $1}' || echo "?")
+  echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid cache: ${SQUID_SIZE} MB)"
 
   if [ "$STATUS" = "Complete" ]; then
     echo "Provision is Complete!"
