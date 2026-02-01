@@ -47,7 +47,7 @@ if sshpass -p "$PASSWORD" ssh \
   echo "OK: SSH connected with strict host key checking — host keys verified"
 else
   echo "FAIL: SSH rejected host key — injected host keys don't match"
-  FAIL=1
+  exit 1
 fi
 
 SSH_CMD=(sshpass -p "$PASSWORD" ssh
