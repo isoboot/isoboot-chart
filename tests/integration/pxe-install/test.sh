@@ -14,7 +14,7 @@ fi
 
 BRIDGE="br-test"
 VM_MAC="52:54:00:12:34:56"
-VM_NAME="pxe-test-vm"
+VM_NAME="pxe-test-vm.local"
 PROVISION_NAME="pxe-test-debian13"
 BOOT_TARGET="debian-13-no-firmware"
 QEMU_RAM="1G"
@@ -432,7 +432,7 @@ fi
 # Step 15 — Verify installation
 # ---------------------------------------------------------------------------
 echo "=== Step 15: Verifying installation ==="
-"${SCRIPT_DIR}/verify.sh" "$VM_IP" "isoboot" "$PASSWORD"
+"${SCRIPT_DIR}/verify.sh" "$VM_IP" "isoboot" "$PASSWORD" "pxe-test-vm" "local"
 echo "PASS: Debian 13 (trixie) verified"
 
 # ---------------------------------------------------------------------------
