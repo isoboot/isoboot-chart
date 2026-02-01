@@ -287,7 +287,9 @@ EOF
 
   # --- Wait for SSH (re-check VM IP from ARP on each attempt) ---
   # The VM reboots after install, which may change its DHCP lease IP.
+  # If the case provides an SSH key (password auth may be disabled), use it.
   local vm_ip=""
+  local ssh_key_file="${case_work}/id_ed25519"
   echo "Waiting for SSH (MAC: ${vm_mac})..."
   elapsed=0
   while [ "$elapsed" -lt "$SSH_TIMEOUT" ]; do
@@ -304,13 +306,25 @@ EOF
     fi
 
     if [ -n "$vm_ip" ]; then
-      if sshpass -p "$password" ssh \
-        -o StrictHostKeyChecking=no \
-        -o UserKnownHostsFile=/dev/null \
-        -o ConnectTimeout=5 \
-        "${username}@${vm_ip}" "true" 2>/dev/null; then
-        echo "SSH is available!"
-        break
+      if [ -f "$ssh_key_file" ]; then
+        # Use key-based SSH (for cases that disable password auth)
+        if ssh -i "$ssh_key_file" \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -o ConnectTimeout=5 \
+          "${username}@${vm_ip}" "true" 2>/dev/null; then
+          echo "SSH is available! (key auth)"
+          break
+        fi
+      else
+        if sshpass -p "$password" ssh \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -o ConnectTimeout=5 \
+          "${username}@${vm_ip}" "true" 2>/dev/null; then
+          echo "SSH is available!"
+          break
+        fi
       fi
     fi
     sleep 10
@@ -340,11 +354,19 @@ EOF
 
   # --- Power off VM ---
   echo "Powering off VM..."
-  sshpass -p "$password" ssh \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    "${username}@${vm_ip}" \
-    "echo '${password}' | sudo -S poweroff" 2>/dev/null || true
+  if [ -f "$ssh_key_file" ]; then
+    ssh -i "$ssh_key_file" \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      "${username}@${vm_ip}" \
+      "echo '${password}' | sudo -S poweroff" 2>/dev/null || true
+  else
+    sshpass -p "$password" ssh \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      "${username}@${vm_ip}" \
+      "echo '${password}' | sudo -S poweroff" 2>/dev/null || true
+  fi
 
   elapsed=0
   while [ "$elapsed" -lt 60 ] && kill -0 "$qemu_pid" 2>/dev/null; do

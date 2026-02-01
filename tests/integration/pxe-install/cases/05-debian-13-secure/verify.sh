@@ -42,18 +42,27 @@ fi
 echo ""
 echo "Verifying password authentication is rejected..."
 
-if sshpass -p "$PASSWORD" ssh \
+set +e
+SSH_PASS_OUTPUT=$(sshpass -p "$PASSWORD" ssh \
   -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile="${KNOWN_HOSTS}" \
   -o GlobalKnownHostsFile=/dev/null \
   -o ConnectTimeout=10 \
   -o PubkeyAuthentication=no \
   -o PreferredAuthentications=password \
-  "${USERNAME}@${IP}" "true" 2>/dev/null; then
+  "${USERNAME}@${IP}" "true" 2>&1)
+SSH_PASS_STATUS=$?
+set -e
+
+if [ "$SSH_PASS_STATUS" -eq 0 ]; then
   echo "FAIL: Password authentication should be rejected but succeeded"
   FAIL=1
+elif echo "$SSH_PASS_OUTPUT" | grep -qi "permission denied"; then
+  echo "OK: Password authentication correctly rejected (permission denied)"
 else
-  echo "OK: Password authentication correctly rejected"
+  echo "FAIL: SSH with password failed for an unexpected reason:"
+  echo "$SSH_PASS_OUTPUT"
+  FAIL=1
 fi
 
 # --- Verify key-only authentication SUCCEEDS ---

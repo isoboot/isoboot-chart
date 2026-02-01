@@ -192,7 +192,7 @@ vm-05-debian-13-secure   vm-05.lan   debian-13-no-firmware  Complete   192.168.8
 ### Password auth is rejected
 
 ```
-$ ssh -o PreferredAuthentications=password isoboot@192.168.88.105
+$ ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no isoboot@192.168.88.105
 isoboot@192.168.88.105: Permission denied (publickey).
 ```
 
@@ -221,4 +221,4 @@ There is no "Are you sure you want to continue connecting?" prompt because the h
 - **Defense against reinstall confusion**: Known host keys mean SSH clients won't accept a different machine impersonating this one
 - **Automation-friendly**: Scripts can connect without `-o StrictHostKeyChecking=no` (which is insecure in production)
 - **Consistent identity**: machine-id ensures the host has a stable identifier for DHCP leases, systemd journal, and fleet management
-- **Reduced attack surface**: Password auth disabled means brute-force SSH attacks are not possible
+- **Reduced attack surface**: Disabling password auth prevents password-based SSH brute-force attempts
