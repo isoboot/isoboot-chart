@@ -31,6 +31,11 @@ for key_type in ed25519 ecdsa rsa; do
   echo "${IP} ${KEY_DATA}" >> "$KNOWN_HOSTS"
 done
 
+if [ "$FAIL" -ne 0 ] || [ ! -s "$KNOWN_HOSTS" ]; then
+  echo "FAIL: Cannot perform strict host key verification without valid public keys"
+  exit 1
+fi
+
 # --- Verify SSH connects with strict host key checking ---
 # SSH connects with StrictHostKeyChecking=yes using a known_hosts file
 # built from the public keys we injected. If the VM's host keys don't
@@ -43,10 +48,10 @@ if sshpass -p "$PASSWORD" ssh \
   -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile="${KNOWN_HOSTS}" \
   -o ConnectTimeout=10 \
-  "${USERNAME}@${IP}" "true" 2>/dev/null; then
+  "${USERNAME}@${IP}" "true"; then
   echo "OK: SSH connected with strict host key checking — host keys verified"
 else
-  echo "FAIL: SSH rejected host key — injected host keys don't match"
+  echo "FAIL: SSH connection failed with strict host key checking (see SSH output above)"
   exit 1
 fi
 
