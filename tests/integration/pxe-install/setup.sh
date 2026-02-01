@@ -45,10 +45,9 @@ if [ -z "$SUBNET" ]; then
   exit 1
 fi
 
-VM_IP="${SUBNET}.100"
 BRIDGE_IP="${SUBNET}.1"
 KIND_IP="${SUBNET}.10"
-echo "Using subnet ${SUBNET}.0/24  (bridge=${BRIDGE_IP}  kind=${KIND_IP}  vm=${VM_IP})"
+echo "Using subnet ${SUBNET}.0/24  (bridge=${BRIDGE_IP}  kind=${KIND_IP})"
 
 # ---------------------------------------------------------------------------
 # Step 2 — Create bridge + NAT
@@ -74,15 +73,12 @@ echo "Bridge $BRIDGE up at $BRIDGE_IP"
 echo "=== Step 3: Starting host dnsmasq ==="
 mkdir -p "$WORK_DIR"
 
-VM_MAC="52:54:00:12:34:56"
-
 dnsmasq \
   --conf-file= \
   --no-hosts \
   --interface="$BRIDGE" \
   --bind-interfaces \
   --dhcp-range="${SUBNET}.100,${SUBNET}.200,255.255.255.0,12h" \
-  --dhcp-host="${VM_MAC},${VM_IP}" \
   --dhcp-option=3,"${BRIDGE_IP}" \
   --dhcp-option=6,8.8.8.8,8.8.4.4 \
   --log-queries \
@@ -162,8 +158,6 @@ BRIDGE=${BRIDGE}
 SUBNET=${SUBNET}
 BRIDGE_IP=${BRIDGE_IP}
 KIND_IP=${KIND_IP}
-VM_IP=${VM_IP}
-VM_MAC=${VM_MAC}
 DNSMASQ_PID=${DNSMASQ_PID}
 WORK_DIR=${WORK_DIR}
 SCRIPT_DIR=${SCRIPT_DIR}

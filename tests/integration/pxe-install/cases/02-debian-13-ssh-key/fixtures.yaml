@@ -4,7 +4,7 @@ metadata:
   name: pxe-test-vm.local
   namespace: isoboot
 spec:
-  mac: "52-54-00-12-34-56"
+  mac: "${MAC}"
 ---
 apiVersion: isoboot.io/v1alpha1
 kind: ResponseTemplate

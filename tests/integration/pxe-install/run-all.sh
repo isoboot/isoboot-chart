@@ -72,6 +72,7 @@ echo "Using OVMF: $OVMF_CODE"
 # ---------------------------------------------------------------------------
 run_case() {
   local case_dir="$1"
+  local case_num="$2"
   local case_name
   case_name="$(basename "$case_dir")"
 
@@ -83,6 +84,14 @@ run_case() {
   echo "================================================================"
   echo "  CASE: ${case_name}"
   echo "================================================================"
+
+  # --- Derive MAC from case number (52:54:00:XX:XX:XX) ---
+  local vm_mac
+  vm_mac=$(printf "52:54:00:%02d:%02d:%02d" \
+    $(( case_num / 10000 % 100 )) $(( case_num / 100 % 100 )) $(( case_num % 100 )))
+  local vm_mac_dash
+  vm_mac_dash=$(echo "$vm_mac" | tr ':' '-')
+  echo "MAC: ${vm_mac}"
 
   # --- Read case config (optional config.env in case dir) ---
   local provision_name="pxe-test-${case_name}"
@@ -125,9 +134,9 @@ run_case() {
     --from-literal=timezone=UTC \
     "${extra_cm_args[@]+"${extra_cm_args[@]}"}"
 
-  # --- Apply fixtures ---
+  # --- Apply fixtures (substitute MAC placeholder) ---
   echo "Applying fixtures..."
-  kubectl apply -f "${case_dir}/fixtures.yaml"
+  sed "s/\${MAC}/${vm_mac_dash}/g" "${case_dir}/fixtures.yaml" | kubectl apply -f -
 
   # --- Create Provision ---
   echo "Creating Provision..."
@@ -172,7 +181,7 @@ EOF
     -drive "file=${disk},format=qcow2,if=virtio" \
     "${pflash_args[@]}" \
     -netdev "tap,id=net0,ifname=tap-vm,script=no,downscript=no" \
-    -device "virtio-net-pci,netdev=net0,mac=${VM_MAC}" \
+    -device "virtio-net-pci,netdev=net0,mac=${vm_mac}" \
     -serial "file:${serial_log}" \
     -display none \
     -pidfile "${case_work}/qemu.pid" \
@@ -237,15 +246,29 @@ EOF
     return 1
   fi
 
+  # --- Get VM IP from Provision status ---
+  local vm_ip
+  vm_ip=$(kubectl get provision/"${provision_name}" -n isoboot \
+    -o jsonpath='{.status.ip}' 2>/dev/null || echo "")
+  if [ -z "$vm_ip" ]; then
+    echo "ERROR: Provision Complete but no IP in status"
+    cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
+    kill "$qemu_pid" 2>/dev/null || true
+    wait "$qemu_pid" 2>/dev/null || true
+    ip link del tap-vm 2>/dev/null || true
+    return 1
+  fi
+  echo "VM IP: ${vm_ip}"
+
   # --- Wait for SSH ---
-  echo "Waiting for SSH on ${VM_IP}..."
+  echo "Waiting for SSH on ${vm_ip}..."
   elapsed=0
   while [ "$elapsed" -lt "$SSH_TIMEOUT" ]; do
     if sshpass -p "$password" ssh \
       -o StrictHostKeyChecking=no \
       -o UserKnownHostsFile=/dev/null \
       -o ConnectTimeout=5 \
-      "${username}@${VM_IP}" "true" 2>/dev/null; then
+      "${username}@${vm_ip}" "true" 2>/dev/null; then
       echo "SSH is available!"
       break
     fi
@@ -279,7 +302,7 @@ EOF
   sshpass -p "$password" ssh \
     -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
-    "${username}@${VM_IP}" \
+    "${username}@${vm_ip}" \
     "echo '${password}' | sudo -S poweroff" 2>/dev/null || true
 
   elapsed=0
@@ -306,7 +329,8 @@ cleanup_case() {
 
   echo "Cleaning up resources for ${case_name}..."
   kubectl delete provision/"${provision_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
-  kubectl delete -f "${CASES_DIR}/${case_name}/fixtures.yaml" --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete responsetemplate/pxe-test-preseed -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete machine/pxe-test-vm.local -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found --wait 2>/dev/null || true
 
   # Kill any leftover QEMU
@@ -346,9 +370,11 @@ FAILED=0
 
 for case_dir in "${cases[@]}"; do
   case_name="$(basename "$case_dir")"
+  # Extract case number from directory name prefix (e.g., 01 from 01-basic-debian-13)
+  case_num=$((10#${case_name%%-*}))
   CASE_NAMES+=("$case_name")
 
-  if run_case "$case_dir"; then
+  if run_case "$case_dir" "$case_num"; then
     CASE_RESULTS+=("PASS")
     PASSED=$((PASSED + 1))
   else
