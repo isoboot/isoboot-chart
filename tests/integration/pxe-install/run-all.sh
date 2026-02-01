@@ -164,6 +164,23 @@ $([ -n "$secret_name" ] && echo "  secrets:
     - ${secret_name}")
 EOF
 
+  # --- Verify resources before launching VM ---
+  if [ -n "$secret_name" ]; then
+    echo "Verifying secret '${secret_name}'..."
+    kubectl get secret/"${secret_name}" -n isoboot \
+      -o go-template='{{range $k, $v := .data}}  key: {{$k}} ({{len $v}} chars base64){{"\n"}}{{end}}'
+  fi
+  echo "Verifying preseed rendering..."
+  local preseed_url="http://${BRIDGE_IP}:8080/dynamic/answer/${provision_name}/preseed.cfg"
+  if curl -sf "$preseed_url" > "${case_work}/rendered-preseed.cfg"; then
+    echo "  Preseed rendered OK ($(wc -c < "${case_work}/rendered-preseed.cfg") bytes)"
+    cp "${case_work}/rendered-preseed.cfg" "${case_artifacts}/"
+  else
+    echo "  ERROR: Preseed rendering failed! URL: ${preseed_url}"
+    curl -v "$preseed_url" 2>&1 | tail -20 || true
+    return 1
+  fi
+
   # --- Create QEMU disk ---
   local disk="${case_work}/disk.qcow2"
   qemu-img create -f qcow2 "$disk" "$QEMU_DISK_SIZE"
