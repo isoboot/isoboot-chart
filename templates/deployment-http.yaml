@@ -17,6 +17,7 @@ spec:
         {{- include "isoboot.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: http
     spec:
+      hostNetwork: true
       containers:
         - name: http
           image: "golang:1.25-alpine"
@@ -26,10 +27,19 @@ spec:
             - -c
             - |
               set -e
+              INTERFACE="{{ required "interface is required" .Values.interface }}"
               CONTROLLER_ADDR="{{ include "isoboot.fullname" . }}-controller.{{ .Release.Namespace }}.svc.cluster.local:8081"
 
-              echo "Installing git..."
-              apk add --no-cache git
+              echo "Installing dependencies..."
+              apk add --no-cache git iproute2
+
+              echo "Detecting host IP from interface ${INTERFACE}..."
+              HOST_IP=$(ip -4 addr show "${INTERFACE}" | awk '/inet / {print $2}' | cut -d/ -f1 | head -1)
+              if [ -z "$HOST_IP" ]; then
+                echo "ERROR: Could not detect IP from interface ${INTERFACE}"
+                exit 1
+              fi
+              echo "Host IP: ${HOST_IP}"
 
               echo "Installing isoboot-http..."
               GOPROXY=direct go install github.com/isoboot/isoboot/cmd/isoboot-http@{{ .Values.commit }}
@@ -45,10 +55,6 @@ spec:
           env:
             - name: GOCACHE
               value: /go/cache
-            - name: HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
           ports:
             - name: http
               containerPort: {{ .Values.http.listenPort }}
