@@ -134,7 +134,7 @@ spec:
         chmod 600 /target/etc/ssh/ssh_host_rsa_key && \
         chmod 644 /target/etc/ssh/ssh_host_rsa_key.pub && \
       {{- end }}
-        wget -qO- http://{{ .Host }}:{{ .Port }}/boot/done?mac={{ .MAC }} && \
+        wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }} && \
         echo "Done." >> /target/root/late_command.log
 EOF
 ```
@@ -142,9 +142,9 @@ EOF
 4. Create the `ConfigMap`
 Create the password
 ```
-$ openssl passwd -6 
-Password: 
-Verifying - Password: 
+$ openssl passwd -6
+Password:
+Verifying - Password:
 $6$5cyuuvFamWqaN22q$7xO0VNYubQtks2EmhH0wcBKtp0uafmd/1aH0bjccMtNL7i2z9v1mdAIZ9RHfa75RJ5ssOzm6lQn0/Mbkf068B.
 ```
 
@@ -211,4 +211,43 @@ vm-deb-13-with-firmware   vm-deb-13.lan   debian-13-with-firmware   Complete   1
 9. You can remotely connect via SSH using the credentials you configured for this Debian installation (for example, the `isoboot` user created during setup).
 ```
 ssh isoboot@192.168.88.192
+```
+
+## Why inject SSH host keys?
+
+Without injected host keys, every fresh install generates random host keys. This means:
+- SSH clients see a "host key has changed" warning when a machine is reinstalled
+- There's no way to verify the machine's identity on first connection (TOFU problem)
+- Automation scripts must use `StrictHostKeyChecking=no`, which is insecure
+
+By injecting known host keys during provisioning, you can:
+- Pre-populate `~/.ssh/known_hosts` on client machines before the target even boots
+- Connect without the "Are you sure you want to continue connecting?" prompt
+- Detect MITM attacks — if the host key doesn't match, SSH refuses to connect
+
+## How to use injected host keys
+
+Build `known_hosts` entries from the private keys used in the Secret:
+
+```bash
+for key_file in ssh_host_ed25519_key ssh_host_ecdsa_key ssh_host_rsa_key; do
+  ssh-keygen -y -f /path/to/${key_file} | while read key_type key_data; do
+    echo "192.168.88.192 ${key_type} ${key_data}"
+  done
+done >> ~/.ssh/known_hosts
+```
+
+Then SSH connects without prompting:
+```
+# No "Are you sure you want to continue connecting?" prompt
+$ ssh isoboot@192.168.88.192
+Linux vm-deb-13 ...
+isoboot@vm-deb-13:~$
+```
+
+If the host key doesn't match (e.g., machine was compromised or reinstalled with different keys), SSH refuses:
+```
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 ```
