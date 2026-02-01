@@ -55,10 +55,8 @@ spec:
               maximum_object_size {{ .Values.proxy.maxObjectSize }}
               cache_mem 16 MB
 
-              # Allow RFC1918 private networks
-              acl localnet src 10.0.0.0/8
-              acl localnet src 172.16.0.0/12
-              acl localnet src 192.168.0.0/16
+              # Allow connections from the detected subnet
+              acl localnet src ${SUBNET}
 
               # Safe ports
               acl SSL_ports port 443
