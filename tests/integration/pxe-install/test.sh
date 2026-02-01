@@ -201,7 +201,7 @@ echo "BootSource debian-13 is Complete"
 # Step 8 — Generate credentials + ConfigMap
 # ---------------------------------------------------------------------------
 echo "=== Step 8: Generating credentials ==="
-PASSWORD=$(tr -dc 'a-z' < /dev/urandom | head -c 16)
+PASSWORD=$(head -c 500 /dev/urandom | tr -dc a-z | cut -c1-16)
 PASSWORD_HASH=$(openssl passwd -6 "$PASSWORD")
 echo "Generated password for user 'isoboot' (hash: ${PASSWORD_HASH:0:20}...)"
 
