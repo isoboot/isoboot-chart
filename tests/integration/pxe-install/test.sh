@@ -14,7 +14,7 @@ PROVISION_NAME="pxe-test-debian13"
 BOOT_TARGET="debian-13-no-firmware"
 QEMU_RAM="1G"
 QEMU_DISK_SIZE="20G"
-INSTALL_TIMEOUT=2700  # 45 min
+INSTALL_TIMEOUT=300   # 5 min (short for debugging)
 SSH_TIMEOUT=300       # 5 min
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
