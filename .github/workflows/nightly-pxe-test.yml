@@ -4,10 +4,18 @@ on:
   schedule:
     - cron: '0 6 * * *'
   workflow_dispatch:
+  pull_request:
+    types: [labeled]
 
 jobs:
   pxe-install:
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.label.name == 'run-pxe-test'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +98,15 @@ jobs:
         with:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v6-${{ env.COMMIT }}
+
+      - name: Remove trigger label
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-pxe-test; then
+            echo "::warning::Failed to remove run-pxe-test label — re-apply manually to re-trigger"
+          fi
 
       - name: Collect debug logs
         if: failure()

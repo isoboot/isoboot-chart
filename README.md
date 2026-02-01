@@ -75,6 +75,10 @@ When a PXE client boots:
 | 8080 | TCP | Reverse proxy (nginx, external) |
 | 18080 | TCP | gRPC (isoboot-controller) |
 
+## Testing
+
+A full PXE install integration test runs nightly. To trigger it on a PR, apply the `run-pxe-test` label. The label is automatically removed after the run completes.
+
 ## Uninstall
 
 ```bash
