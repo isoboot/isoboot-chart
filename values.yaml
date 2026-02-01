@@ -36,13 +36,13 @@ proxy:
   enabled: true
   port: 3128
   maxObjectSize: "500 MB"
-  cacheSize: 5000  # MB (~5GB)
+  cacheSize: 10000  # MB (~10GB)
   resources:
     limits:
-      memory: "512Mi"
+      memory: "256Mi"
       cpu: "500m"
     requests:
-      memory: "256Mi"
+      memory: "128Mi"
       cpu: "100m"
 
 # Nginx reverse proxy (external-facing on port 8080)
