@@ -91,6 +91,7 @@ else
     -o UserKnownHostsFile=/dev/null \
     -o ConnectTimeout=10 \
     -o PasswordAuthentication=no \
+    -o PreferredAuthentications=publickey \
     "${USERNAME}@${IP}" "true" 2>/dev/null; then
     echo "OK: SSH key authentication works"
   else
