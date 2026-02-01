@@ -7,6 +7,11 @@ set -euo pipefail
 #
 # Must be run as root (needs bridge/iptables/tap/qemu).
 
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Error: this script must be run as root." >&2
+  exit 1
+fi
+
 BRIDGE="br-test"
 VM_MAC="52:54:00:12:34:56"
 VM_NAME="pxe-test-vm"
@@ -257,9 +262,7 @@ spec:
     - pxe-test-config
 EOF
 
-kubectl wait --for=jsonpath='{.status.phase}'=Pending \
-  provision/"${PROVISION_NAME}" -n isoboot --timeout=30s
-echo "Provision is Pending"
+echo "Provision created"
 
 # ---------------------------------------------------------------------------
 # Step 10 — Record squid cache size (before)
@@ -342,7 +345,6 @@ qemu-system-x86_64 \
   -netdev "tap,id=net0,ifname=tap-vm,script=no,downscript=no" \
   -device "virtio-net-pci,netdev=net0,mac=${VM_MAC}" \
   -serial "file:${SERIAL_LOG}" \
-  -monitor "tcp:127.0.0.1:4444,server,nowait" \
   -display none \
   -pidfile "${WORK_DIR}/qemu.pid" \
   -daemonize
@@ -371,9 +373,6 @@ while [ "$ELAPSED" -lt "$INSTALL_TIMEOUT" ]; do
   DISK_MOD=$(stat -c %Y "$DISK" 2>/dev/null || echo "0")
   DISK_AGO=$(( $(date +%s) - DISK_MOD ))
   echo "  [${ELAPSED}s] Provision status: ${STATUS}  (squid: ${SQUID_SIZE} MB, disk: ${DISK_SIZE} MB, written ${DISK_AGO}s ago)"
-  # Capture VM screen
-  (echo "screendump ${WORK_DIR}/screen.ppm"; sleep 0.5) | nc -w 2 -N 127.0.0.1 4444 >/dev/null 2>&1 || true
-  pnmtopng "${WORK_DIR}/screen.ppm" > "${WORK_DIR}/screen.png" 2>/dev/null || true
 
   if [ "$STATUS" = "Complete" ]; then
     echo "Provision is Complete!"

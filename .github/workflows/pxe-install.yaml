@@ -34,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils ovmf dnsmasq-base \
-            bridge-utils iproute2 openssh-client sshpass netpbm
+            bridge-utils iproute2 openssh-client sshpass
 
       - name: Install kind
         if: steps.kvm.outputs.available == 'true'
@@ -90,14 +90,6 @@ jobs:
         with:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v6-${{ env.COMMIT }}
-
-      - name: Upload VM screenshot
-        if: always() && steps.kvm.outputs.available == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: vm-screen
-          path: /tmp/pxe-install-test/screen.png
-          if-no-files-found: ignore
 
       - name: Debug on failure
         if: failure()
