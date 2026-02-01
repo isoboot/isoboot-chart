@@ -1,3 +1,5 @@
+[![Nightly PXE Test](https://github.com/isoboot/isoboot-chart/actions/workflows/nightly-pxe-test.yml/badge.svg)](https://github.com/isoboot/isoboot-chart/actions/workflows/nightly-pxe-test.yml)
+
 # isoboot-chart
 
 PXE boot proxy DHCP server using dnsmasq and iPXE.

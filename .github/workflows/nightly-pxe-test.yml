@@ -1,9 +1,9 @@
-name: PXE Install Test
+name: Nightly PXE Install Test
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 jobs:
   pxe-install:
@@ -91,24 +91,31 @@ jobs:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v6-${{ env.COMMIT }}
 
-      - name: Debug on failure
+      - name: Collect debug logs
         if: failure()
         run: |
-          echo "=== QEMU serial log ==="
-          cat /tmp/pxe-install-test/serial.log 2>/dev/null || echo "(no serial log)"
-          echo ""
-          echo "=== dnsmasq log ==="
-          tail -100 /tmp/pxe-install-test/dnsmasq.log 2>/dev/null || echo "(no dnsmasq log)"
-          echo ""
-          echo "=== CRD Status ==="
-          kubectl get bootsource,provision,machine,boottarget,responsetemplate \
-            -n isoboot -o wide 2>/dev/null || true
-          echo ""
-          echo "=== Pod Status ==="
-          kubectl get pods -n isoboot -o wide 2>/dev/null || true
-          echo ""
-          echo "=== Pod Logs ==="
-          for pod in $(kubectl get pods -n isoboot -o name 2>/dev/null); do
-            echo "--- $pod ---"
-            kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
-          done
+          mkdir -p /tmp/pxe-test-artifacts
+          cp /tmp/pxe-install-test/serial.log /tmp/pxe-test-artifacts/ 2>/dev/null || true
+          cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-test-artifacts/ 2>/dev/null || true
+          {
+            echo "=== CRD Status ==="
+            kubectl get bootsource,provision,machine,boottarget,responsetemplate \
+              -n isoboot -o wide 2>/dev/null || true
+            echo ""
+            echo "=== Pod Status ==="
+            kubectl get pods -n isoboot -o wide 2>/dev/null || true
+            echo ""
+            echo "=== Pod Logs ==="
+            for pod in $(kubectl get pods -n isoboot -o name 2>/dev/null); do
+              echo "--- $pod ---"
+              kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
+            done
+          } > /tmp/pxe-test-artifacts/kubernetes.log 2>&1
+
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pxe-test-logs
+          path: /tmp/pxe-test-artifacts/
+          retention-days: 14
