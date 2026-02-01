@@ -1,0 +1,114 @@
+name: PXE Install Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pxe-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Check KVM
+        id: kvm
+        run: |
+          if [ -e /dev/kvm ] && [ -w /dev/kvm ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::KVM not available, skipping PXE install test"
+          fi
+
+      - name: Install dependencies
+        if: steps.kvm.outputs.available == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils ovmf dnsmasq-base \
+            bridge-utils iproute2 openssh-client sshpass
+
+      - name: Install kind
+        if: steps.kvm.outputs.available == 'true'
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Install helm
+        if: steps.kvm.outputs.available == 'true'
+        uses: azure/setup-helm@v4
+
+      - name: Extract commit
+        if: steps.kvm.outputs.available == 'true'
+        run: |
+          COMMIT=$(grep '^commit:' values.yaml | awk '{print $2}' | tr -d '"')
+          echo "COMMIT=$COMMIT" >> "$GITHUB_ENV"
+          echo "Commit: $COMMIT"
+
+      - name: Restore cache
+        if: steps.kvm.outputs.available == 'true'
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/isoboot-cache
+          key: isoboot-cache-v6-${{ env.COMMIT }}
+          restore-keys: |
+            isoboot-cache-v6-
+
+      - name: Run PXE install test
+        if: steps.kvm.outputs.available == 'true'
+        run: sudo tests/integration/pxe-install/test.sh
+
+      - name: Save cache from kind node
+        if: always() && steps.kvm.outputs.available == 'true'
+        run: |
+          if ! docker ps --format '{{.Names}}' | grep -q '^kind-control-plane$'; then
+            echo "kind-control-plane container not found, skipping cache save"
+            exit 0
+          fi
+          if docker exec kind-control-plane test -d /var/cache/isoboot/go; then
+            sudo rm -rf /tmp/isoboot-cache
+            mkdir -p /tmp/isoboot-cache
+            docker exec kind-control-plane tar cf - -C /var/cache/isoboot/go . \
+              | tar xf - -C /tmp/isoboot-cache
+          else
+            echo "/var/cache/isoboot/go does not exist in kind node, skipping"
+          fi
+
+      - name: Save cache
+        if: always() && steps.kvm.outputs.available == 'true' && steps.cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: /tmp/isoboot-cache
+          key: isoboot-cache-v6-${{ env.COMMIT }}
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== QEMU serial log ==="
+          cat /tmp/pxe-install-test/serial.log 2>/dev/null || echo "(no serial log)"
+          echo ""
+          echo "=== dnsmasq log ==="
+          tail -100 /tmp/pxe-install-test/dnsmasq.log 2>/dev/null || echo "(no dnsmasq log)"
+          echo ""
+          echo "=== CRD Status ==="
+          kubectl get bootsource,provision,machine,boottarget,responsetemplate \
+            -n isoboot -o wide 2>/dev/null || true
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -n isoboot -o wide 2>/dev/null || true
+          echo ""
+          echo "=== Pod Logs ==="
+          for pod in $(kubectl get pods -n isoboot -o name 2>/dev/null); do
+            echo "--- $pod ---"
+            kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
+          done
