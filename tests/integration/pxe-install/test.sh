@@ -9,7 +9,6 @@ set -euo pipefail
 
 BRIDGE="br-test"
 VM_MAC="52:54:00:12:34:56"
-VM_MAC_DASH="52-54-00-12-34-56"
 VM_NAME="pxe-test-vm"
 PROVISION_NAME="pxe-test-debian13"
 BOOT_TARGET="debian-13-no-firmware"
@@ -25,6 +24,7 @@ WORK_DIR="/tmp/pxe-install-test"
 QEMU_PID=""
 DNSMASQ_PID=""
 SUBNET=""
+TEST_PASSED=""
 
 # ---------------------------------------------------------------------------
 # Cleanup (runs on EXIT, even on failure)
@@ -66,7 +66,13 @@ cleanup() {
       -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
   fi
 
-  rm -rf "$WORK_DIR"
+  # Preserve logs on failure for CI debug step
+  if [ -n "$TEST_PASSED" ]; then
+    rm -rf "$WORK_DIR"
+  else
+    echo "Preserving $WORK_DIR for debug (test did not pass)"
+  fi
+
   echo "Cleanup done"
 }
 trap cleanup EXIT
@@ -239,7 +245,7 @@ echo "Provision is Pending"
 # ---------------------------------------------------------------------------
 echo "=== Step 10: Recording squid cache size (before) ==="
 SQUID_POD=$(kubectl get pods -n isoboot \
-  -l app.kubernetes.io/component=squid \
+  -l app.kubernetes.io/component=proxy \
   -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 
 CACHE_BEFORE=0
@@ -433,6 +439,8 @@ if kill -0 "$QEMU_PID" 2>/dev/null; then
   kill -9 "$QEMU_PID" 2>/dev/null || true
 fi
 QEMU_PID=""
+
+TEST_PASSED=1
 
 echo ""
 echo "=== PXE Install Test: PASSED ==="
