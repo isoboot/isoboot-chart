@@ -85,3 +85,29 @@ transitions, content serving, and status invariants at every step.
 ### 4.6 Completion
 - [x] /dynamic/boot/done returns 200, status transitions to Complete
 - [x] conditional-boot returns 404 after done, status stays Complete
+
+## 5. PXE Install (Debian 13)
+
+Script: `tests/integration/pxe-install/test.sh`
+Workflow: `.github/workflows/pxe-install.yaml` (separate from the integration workflow)
+
+Real PXE installation of Debian 13 (trixie) on a QEMU VM using an isolated
+bridge network. Requires KVM; skips gracefully when unavailable.
+
+### 5.1 Infrastructure
+- [ ] Find unused subnet (192.168.101-199.0/24)
+- [ ] Create bridge, NAT, host dnsmasq (regular DHCP)
+- [ ] Create kind cluster, connect to bridge via veth
+- [ ] Install CRDs + helm chart, wait for pods + BootSource Complete
+
+### 5.2 Installation
+- [ ] Generate credentials, create ConfigMap
+- [ ] Apply Machine, ResponseTemplate, Provision
+- [ ] QEMU VM PXE boots via UEFI (OVMF), installs Debian 13
+- [ ] Provision transitions Pending -> InProgress -> Complete
+
+### 5.3 Verification
+- [ ] SSH to VM with generated credentials
+- [ ] /etc/os-release contains VERSION_CODENAME=trixie
+- [ ] Squid cache size increases (logged, not a hard gate)
+- [ ] VM powers off cleanly
