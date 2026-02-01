@@ -2,13 +2,35 @@ name: Integration Test
 
 on:
   pull_request:
-    paths-ignore:
-      - '**.md'
   push:
     branches: [main]
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_tests: ${{ steps.filter.outputs.run_tests }}
+    steps:
+      - id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          FILES=$(gh pr diff ${{ github.event.pull_request.number }} --name-only)
+          NON_DOCS=$(echo "$FILES" | grep -v '\.md$' || true)
+          if [ -z "$NON_DOCS" ]; then
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            echo "All changed files are .md — skipping integration test"
+          else
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   integration:
+    needs: check-changes
+    if: needs.check-changes.outputs.run_tests == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
