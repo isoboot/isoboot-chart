@@ -21,6 +21,21 @@ SSH_CMD=(sshpass -p "$PASSWORD" ssh
 
 FAIL=0
 
+# --- SSH password auth ---
+echo "Verifying SSH password authentication..."
+
+if sshpass -p "$PASSWORD" ssh \
+  -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null \
+  -o ConnectTimeout=10 \
+  -o PubkeyAuthentication=no \
+  "${USERNAME}@${IP}" "true" 2>/dev/null; then
+  echo "OK: SSH password authentication works"
+else
+  echo "FAIL: SSH password authentication failed"
+  FAIL=1
+fi
+
 # --- OS version ---
 echo "Verifying Debian 13 (trixie) on ${IP}..."
 
