@@ -119,8 +119,8 @@ jobs:
       - name: Collect debug logs
         if: failure()
         run: |
-          mkdir -p /tmp/pxe-install-test/artifacts
-          cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
+          sudo mkdir -p /tmp/pxe-install-test/artifacts
+          sudo cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
           {
             echo "=== CRD Status ==="
             kubectl get bootsource,provision,machine,boottarget,responsetemplate \
@@ -134,7 +134,8 @@ jobs:
               echo "--- $pod ---"
               kubectl logs "$pod" -n isoboot --all-containers=true --tail=100 || true
             done
-          } > /tmp/pxe-install-test/artifacts/kubernetes.log 2>&1
+          } | sudo tee /tmp/pxe-install-test/artifacts/kubernetes.log > /dev/null 2>&1
+          sudo chmod -R a+r /tmp/pxe-install-test/artifacts/
 
       - name: Upload debug artifacts
         if: failure()

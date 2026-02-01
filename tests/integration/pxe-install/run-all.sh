@@ -247,12 +247,23 @@ EOF
     return 1
   fi
 
-  # --- Get VM IP from Provision status ---
-  local vm_ip
-  vm_ip=$(kubectl get provision/"${provision_name}" -n isoboot \
-    -o jsonpath='{.status.ip}' 2>/dev/null || echo "")
+  # --- Get VM IP from ARP table (by MAC address) ---
+  local vm_ip=""
+  local arp_wait=0
+  echo "Looking up VM IP from ARP table (MAC: ${vm_mac})..."
+  while [ "$arp_wait" -lt 60 ]; do
+    vm_ip=$(ip neigh show dev "$BRIDGE" \
+      | grep -i "$vm_mac" \
+      | awk '{print $1}' \
+      | head -1 || true)
+    if [ -n "$vm_ip" ]; then
+      break
+    fi
+    sleep 5
+    arp_wait=$((arp_wait + 5))
+  done
   if [ -z "$vm_ip" ]; then
-    echo "ERROR: Provision Complete but no IP in status"
+    echo "ERROR: Could not find VM IP in ARP table for MAC ${vm_mac}"
     cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
@@ -289,7 +300,7 @@ EOF
 
   # --- Run verify script ---
   echo "Running verify script..."
-  if ! "${case_dir}/verify.sh" "$VM_IP" "$username" "$password" "$expected_hostname" "$expected_domain" "$case_work"; then
+  if ! "${case_dir}/verify.sh" "$vm_ip" "$username" "$password" "$expected_hostname" "$expected_domain" "$case_work"; then
     echo "ERROR: Verification failed"
     cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
     kill "$qemu_pid" 2>/dev/null || true
