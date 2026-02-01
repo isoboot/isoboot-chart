@@ -62,13 +62,16 @@ templates/            # Kubernetes resources
 ├── deployment-controller.yaml  # Deployment (auto-restart)
 ├── deployment-http.yaml        # Deployment (port 80, Go server)
 ├── deployment-nginx.yaml       # Deployment (hostNetwork:8080, reverse proxy)
-├── deployment-squid.yaml       # Deployment (hostNetwork, cached)
+├── deployment-squid.yaml       # Deployment (caching proxy)
 ├── pod-dnsmasq.yaml            # Pod (hostNetwork, DHCP/TFTP)
-├── bootsource-*.yaml            # BootSource resources (file downloads)
-├── boottarget-*.yaml           # BootTarget resources (boot config)
-└── ...
+├── service-http.yaml           # ClusterIP Service (nginx → Go server)
+├── rbac.yaml                   # ServiceAccount, ClusterRole, ClusterRoleBinding
+├── configmap-templates.yaml    # ConfigMap for iPXE templates
+├── bootsource-*.yaml           # BootSource resources (file downloads)
+└── boottarget-*.yaml           # BootTarget resources (boot config)
 files/                # Template files loaded via .Files.Get
 └── boottarget-debian-v1.tpl
+examples/             # Provisioning walkthrough examples
 values.yaml
 Chart.yaml
 ```
@@ -93,7 +96,7 @@ kernel http://{{ .Host }}:{{ .Port }}/static/{{ .BootSource }}/{{ .KernelFilenam
 ### CRD Architecture: BootSource + BootTarget
 
 - **BootSource** owns file downloads via named fields: `kernel`, `initrd` (direct URLs), or `iso` (ISO download + extraction with `iso.kernel`/`iso.initrd` paths). Optional `firmware` for initrd concatenation. One per OS version. Names: `debian-12`, `debian-13`.
-- **BootTarget** references a BootSource via `bootSourceRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootSource. Names: `debian-12`, `debian-12-no-firmware`.
+- **BootTarget** references a BootSource via `bootSourceRef`. Adds `useFirmware: bool` and `template`. Multiple BootTargets can share one BootSource. Names: `debian-12-with-firmware`, `debian-12-no-firmware`.
 
 BootSource directory layout without firmware (flat):
 ```
@@ -200,6 +203,7 @@ helm install isoboot . --set interface=br1
 # Check logs
 kubectl logs -f deployment/isoboot-controller
 kubectl logs -f deployment/isoboot-http
+kubectl logs -f deployment/isoboot-nginx
 
 # Upgrade (deployments auto-restart)
 helm upgrade isoboot . --set interface=br1
