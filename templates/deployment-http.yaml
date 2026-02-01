@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/component: http
     spec:
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: http
           image: "golang:1.25-alpine"
