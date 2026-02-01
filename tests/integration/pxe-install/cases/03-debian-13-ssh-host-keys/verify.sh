@@ -70,20 +70,20 @@ for key_type in ed25519 ecdsa rsa; do
   echo ""
   echo "  Checking ssh_host_${key_type}_key..."
 
-  local_key="${CASE_WORK}/ssh_host_${key_type}_key"
-  if [ ! -f "$local_key" ]; then
-    echo "  FAIL: Local key not found at ${local_key}"
+  key_file="${CASE_WORK}/ssh_host_${key_type}_key"
+  if [ ! -f "$key_file" ]; then
+    echo "  FAIL: Local key not found at ${key_file}"
     FAIL=1
     continue
   fi
 
-  local_hash=$(sha256sum "$local_key" | awk '{print $1}')
+  key_hash=$(sha256sum "$key_file" | awk '{print $1}')
   remote_hash=$("${SSH_CMD[@]}" "echo '${PASSWORD}' | sudo -S sha256sum /etc/ssh/ssh_host_${key_type}_key 2>/dev/null | awk '{print \$1}'")
 
-  echo "    local:  ${local_hash}"
+  echo "    local:  ${key_hash}"
   echo "    remote: ${remote_hash}"
 
-  if [ "$local_hash" = "$remote_hash" ]; then
+  if [ "$key_hash" = "$remote_hash" ]; then
     echo "  OK: ssh_host_${key_type}_key matches"
   else
     echo "  FAIL: ssh_host_${key_type}_key mismatch"
