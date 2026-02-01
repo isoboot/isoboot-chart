@@ -126,7 +126,7 @@ spec:
       {{- end }}
       {{- if hasKey . "MachineId" }}
         echo "Processing Machine Id..." >> /target/root/late_command.log && \
-        echo '{{ .MachineId | b64enc }}' | base64 -d > /target/etc/machine-id && \
+        { echo '{{ .MachineId | b64enc }}' | base64 -d; echo; } > /target/etc/machine-id && \
         chmod 444 /target/etc/machine-id && \
       {{- end }}
       {{- if and (hasKey . "ssh_host_ed25519_key") (hasKey . "ssh_host_ed25519_key_pub") }}

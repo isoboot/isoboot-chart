@@ -58,7 +58,7 @@ spec:
         chmod 644 /target/etc/ssh/ssh_host_rsa_key.pub && \
       {{- end }}
       {{- if hasKey . "MachineId" }}
-        echo '{{ .MachineId | b64enc }}' | base64 -d > /target/etc/machine-id && \
+        { echo '{{ .MachineId | b64enc }}' | base64 -d; echo; } > /target/etc/machine-id && \
         chmod 444 /target/etc/machine-id && \
       {{- end }}
         in-target sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
