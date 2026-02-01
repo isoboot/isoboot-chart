@@ -106,6 +106,22 @@ if [ -d /tmp/isoboot-cache ] && [ "$(ls -A /tmp/isoboot-cache 2>/dev/null)" ]; t
 fi
 
 # ---------------------------------------------------------------------------
+# Step 4b — Mount ramdisks
+# ---------------------------------------------------------------------------
+echo "=== Step 4b: Mounting ramdisks ==="
+
+# Squid cache ramdisk (1GB inside kind node)
+docker exec kind-control-plane mkdir -p /var/cache/isoboot/squid
+docker exec kind-control-plane mount -t tmpfs -o size=1G tmpfs /var/cache/isoboot/squid
+echo "Squid cache ramdisk mounted (1GB)"
+
+# QCOW2 disk ramdisk (8GB on host — 4GB per parallel VM)
+RAMDISK_DIR="${WORK_DIR}/ramdisk"
+mkdir -p "$RAMDISK_DIR"
+mount -t tmpfs -o size=8G tmpfs "$RAMDISK_DIR"
+echo "QCOW2 ramdisk mounted at $RAMDISK_DIR (8GB)"
+
+# ---------------------------------------------------------------------------
 # Step 5 — Connect kind container to bridge via veth
 # ---------------------------------------------------------------------------
 echo "=== Step 5: Connecting kind to $BRIDGE via veth ==="
@@ -162,6 +178,7 @@ DNSMASQ_PID=${DNSMASQ_PID}
 WORK_DIR=${WORK_DIR}
 SCRIPT_DIR=${SCRIPT_DIR}
 REPO_DIR=${REPO_DIR}
+RAMDISK_DIR=${RAMDISK_DIR}
 EOF
 
 echo ""
