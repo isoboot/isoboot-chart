@@ -26,7 +26,6 @@ spec:
       d-i debian-installer/language string {{ .language }}
       d-i debian-installer/country string {{ .country }}
       d-i keyboard-configuration/xkb-keymap select {{ .keyboard }}
-      d-i netcfg/get_domain string localdomain
       d-i passwd/root-login boolean {{ .loginAsRoot }}
       d-i passwd/user-fullname string {{ .fullName }}
       d-i passwd/username string {{ .username }}
