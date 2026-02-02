@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Shared verification functions for PXE install test cases.
-# Source this from verify.sh: source "$(dirname "$0")/../lib.sh"
+# Shared verification functions for PXE install tests.
+# Source this from verify.sh: source "$(dirname "$0")/lib.sh"
 
 FAIL=0
 
@@ -88,17 +88,18 @@ build_known_hosts() {
 # --- Verification functions ---
 
 verify_os_version() {
+  local codename="${EXPECTED_CODENAME:?EXPECTED_CODENAME not set}"
   echo ""
-  echo "Verifying Debian 13 (trixie) on ${IP}..."
+  echo "Verifying ${codename} on ${IP}..."
 
   local os_release
   os_release=$("${SSH_CMD[@]}" "cat /etc/os-release")
   echo "$os_release"
 
-  if echo "$os_release" | grep -q "VERSION_CODENAME=trixie"; then
-    echo "OK: Debian 13 (trixie) confirmed"
+  if echo "$os_release" | grep -q "VERSION_CODENAME=${codename}"; then
+    echo "OK: ${codename} confirmed"
   else
-    echo "FAIL: Expected VERSION_CODENAME=trixie"
+    echo "FAIL: Expected VERSION_CODENAME=${codename}"
     FAIL=1
   fi
 }
@@ -243,28 +244,6 @@ verify_password_rejected() {
     echo "FAIL: SSH with password failed for an unexpected reason:"
     echo "$ssh_output"
     FAIL=1
-  fi
-}
-
-# Verify SSH connects with strict host key checking using password auth.
-# This proves the injected host keys are in use by the SSH server.
-# Exits with status 1 on failure (blocks further verification).
-verify_ssh_strict_host_keys() {
-  local known_hosts="$1"
-
-  echo ""
-  echo "Verifying SSH with strict host key checking..."
-
-  if sshpass -p "$PASSWORD" ssh \
-    -o StrictHostKeyChecking=yes \
-    -o UserKnownHostsFile="$known_hosts" \
-    -o GlobalKnownHostsFile=/dev/null \
-    -o ConnectTimeout=10 \
-    "${USERNAME}@${IP}" "true"; then
-    echo "OK: SSH connected with strict host key checking — host keys verified"
-  else
-    echo "FAIL: SSH connection failed with strict host key checking (see SSH output above)"
-    exit 1
   fi
 }
 
