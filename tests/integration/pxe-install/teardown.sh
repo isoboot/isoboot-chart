@@ -45,10 +45,7 @@ fi
 
 # Remove network resources
 ip link del veth-kind-br 2>/dev/null || true
-# Clean up any tap devices from parallel test runs
-for tap in $(ip -o link show 2>/dev/null | grep -o 'tap-[0-9][0-9]*' || true); do
-  ip link del "$tap" 2>/dev/null || true
-done
+ip link del tap-1 2>/dev/null || true
 
 if [ -n "$BRIDGE" ] && ip link show "$BRIDGE" &>/dev/null; then
   echo "Removing bridge $BRIDGE"

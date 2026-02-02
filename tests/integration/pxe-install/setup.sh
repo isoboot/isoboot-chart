@@ -105,8 +105,6 @@ if [ -d /tmp/isoboot-cache ] && [ "$(ls -A /tmp/isoboot-cache 2>/dev/null)" ]; t
   cd "$SCRIPT_DIR"
 fi
 
-RAMDISK_DIR=""
-
 # ---------------------------------------------------------------------------
 # Step 5 — Connect kind container to bridge via veth
 # ---------------------------------------------------------------------------
@@ -153,7 +151,7 @@ for bs in $(kubectl get bootsource -n isoboot -o jsonpath='{.items[*].metadata.n
 done
 
 # ---------------------------------------------------------------------------
-# Write state file for run-all.sh and teardown.sh
+# Write state file for run.sh and teardown.sh
 # ---------------------------------------------------------------------------
 cat > "$STATE_FILE" <<EOF
 BRIDGE=${BRIDGE}
@@ -164,7 +162,6 @@ DNSMASQ_PID=${DNSMASQ_PID}
 WORK_DIR=${WORK_DIR}
 SCRIPT_DIR=${SCRIPT_DIR}
 REPO_DIR=${REPO_DIR}
-RAMDISK_DIR=${RAMDISK_DIR}
 EOF
 
 echo ""

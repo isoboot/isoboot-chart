@@ -9,7 +9,7 @@ spec:
 apiVersion: isoboot.io/v1alpha1
 kind: ResponseTemplate
 metadata:
-  name: pxe-test-preseed-${CASE_NUM}
+  name: pxe-test-preseed
   namespace: isoboot
 spec:
   files:
@@ -32,6 +32,13 @@ spec:
       d-i grub-installer/only_debian boolean true
       d-i finish-install/reboot_in_progress note
       d-i preseed/late_command string \
+      {{- if and (hasKey . "sshPublicKey") .sshPublicKey (hasKey . "username") .username }}
+        in-target mkdir -p /home/{{ .username }}/.ssh && \
+        in-target chmod 700 /home/{{ .username }}/.ssh && \
+        echo '{{ .sshPublicKey | b64enc }}' | base64 -d > /target/home/{{ .username }}/.ssh/authorized_keys && \
+        in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
+        in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
+      {{- end }}
       {{- if and (hasKey . "ssh_host_ed25519_key") (hasKey . "ssh_host_ed25519_key_pub") }}
         echo '{{ .ssh_host_ed25519_key | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_ed25519_key && \
         echo '{{ .ssh_host_ed25519_key_pub | b64enc }}' | base64 -d > /target/etc/ssh/ssh_host_ed25519_key.pub && \
@@ -50,4 +57,10 @@ spec:
         chmod 600 /target/etc/ssh/ssh_host_rsa_key && \
         chmod 644 /target/etc/ssh/ssh_host_rsa_key.pub && \
       {{- end }}
+      {{- if hasKey . "MachineId" }}
+        { echo '{{ .MachineId | b64enc }}' | base64 -d; echo; } > /target/etc/machine-id && \
+        chmod 444 /target/etc/machine-id && \
+      {{- end }}
+        in-target sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+        in-target sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
         wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }}

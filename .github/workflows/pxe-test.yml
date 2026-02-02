@@ -1,22 +1,58 @@
-name: Debian 13 PXE Integration Test
+name: PXE Install Test
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
-  workflow_dispatch:
   pull_request:
-    types: [labeled]
+  push:
+    branches: [main]
 
 jobs:
-  pxe-install:
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.label.name == 'run-debian-13-pxe-test'
-    runs-on: ubuntu-latest
+  check-changes:
     permissions:
       contents: read
-      pull-requests: write
-    timeout-minutes: 90
+      pull-requests: read
+    runs-on: ubuntu-latest
+    outputs:
+      run_tests: ${{ steps.filter.outputs.run_tests }}
+    steps:
+      - id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          FILES=$(gh pr diff ${{ github.event.pull_request.number }} --name-only -R ${{ github.repository }})
+          if [ -z "$FILES" ]; then
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+            echo "No files changed — running tests as safety measure"
+            exit 0
+          fi
+          NON_DOCS=$(echo "$FILES" | grep -v '\.md$' || true)
+          if [ -z "$NON_DOCS" ]; then
+            echo "run_tests=false" >> "$GITHUB_OUTPUT"
+            echo "All changed files are .md — skipping tests"
+          else
+            echo "run_tests=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  pxe-test:
+    needs: check-changes
+    if: needs.check-changes.outputs.run_tests == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian
+            version: "12"
+            codename: bookworm
+            boot_target: debian-12-no-firmware
+          - distro: debian
+            version: "13"
+            codename: trixie
+            boot_target: debian-13-no-firmware
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +78,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils ovmf dnsmasq-base \
-            bridge-utils iproute2 openssh-client sshpass
+            bridge-utils iproute2 openssh-client sshpass dbus
 
       - name: Install kind
         if: steps.kvm.outputs.available == 'true'
@@ -76,15 +112,19 @@ jobs:
         if: steps.kvm.outputs.available == 'true'
         run: sudo tests/integration/pxe-install/setup.sh
 
-      - name: Run all PXE install tests
+      - name: Run PXE install test
         if: steps.kvm.outputs.available == 'true'
-        run: sudo tests/integration/pxe-install/run-all.sh
+        run: |
+          sudo tests/integration/pxe-install/run.sh \
+            ${{ matrix.distro }} ${{ matrix.version }} ${{ matrix.codename }} ${{ matrix.boot_target }}
 
       - name: Collect debug logs
         if: failure()
         run: |
           sudo mkdir -p /tmp/pxe-install-test/artifacts
           sudo cp /tmp/pxe-install-test/dnsmasq.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
+          sudo cp /tmp/pxe-install-test/*/serial.log /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
+          sudo cp /tmp/pxe-install-test/*/rendered-preseed.cfg /tmp/pxe-install-test/artifacts/ 2>/dev/null || true
           {
             echo "=== CRD Status ==="
             kubectl get bootsource,provision,machine,boottarget,responsetemplate \
@@ -105,7 +145,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: pxe-test-logs
+          name: pxe-test-logs-${{ matrix.distro }}-${{ matrix.version }}
           path: /tmp/pxe-install-test/artifacts/
           retention-days: 14
 
@@ -135,12 +175,3 @@ jobs:
         with:
           path: /tmp/isoboot-cache
           key: isoboot-cache-v6-${{ env.COMMIT }}
-
-      - name: Remove trigger label
-        if: always() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if ! gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-debian-13-pxe-test; then
-            echo "::warning::Failed to remove run-debian-13-pxe-test label — re-apply manually to re-trigger"
-          fi
