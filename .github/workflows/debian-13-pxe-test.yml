@@ -1,4 +1,4 @@
-name: Nightly PXE Install Test
+name: Debian 13 PXE Integration Test
 
 on:
   schedule:
@@ -11,7 +11,7 @@ jobs:
   pxe-install:
     if: >-
       github.event_name != 'pull_request' ||
-      github.event.label.name == 'run-pxe-test'
+      github.event.label.name == 'run-debian-13-pxe-test'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -141,6 +141,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ! gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-pxe-test; then
-            echo "::warning::Failed to remove run-pxe-test label — re-apply manually to re-trigger"
+          if ! gh pr edit "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" --remove-label run-debian-13-pxe-test; then
+            echo "::warning::Failed to remove run-debian-13-pxe-test label — re-apply manually to re-trigger"
           fi

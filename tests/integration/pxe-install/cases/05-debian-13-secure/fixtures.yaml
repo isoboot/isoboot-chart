@@ -9,7 +9,7 @@ spec:
 apiVersion: isoboot.io/v1alpha1
 kind: ResponseTemplate
 metadata:
-  name: pxe-test-preseed
+  name: pxe-test-preseed-${CASE_NUM}
   namespace: isoboot
 spec:
   files:
