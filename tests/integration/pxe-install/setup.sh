@@ -105,6 +105,8 @@ if [ -d /tmp/isoboot-cache ] && [ "$(ls -A /tmp/isoboot-cache 2>/dev/null)" ]; t
   cd "$SCRIPT_DIR"
 fi
 
+RAMDISK_DIR=""
+
 # ---------------------------------------------------------------------------
 # Step 5 — Connect kind container to bridge via veth
 # ---------------------------------------------------------------------------
@@ -162,6 +164,7 @@ DNSMASQ_PID=${DNSMASQ_PID}
 WORK_DIR=${WORK_DIR}
 SCRIPT_DIR=${SCRIPT_DIR}
 REPO_DIR=${REPO_DIR}
+RAMDISK_DIR=${RAMDISK_DIR}
 EOF
 
 echo ""

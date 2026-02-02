@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-# Runs all PXE install test cases sequentially. Each case boots a QEMU VM,
-# installs Debian via PXE, and verifies the result. Continues on failure.
+# Runs all PXE install test cases in parallel pairs. Each case boots a QEMU VM,
+# installs Debian via PXE, and verifies the result. Cases are run 2 at a time
+# with output captured to per-case log files to avoid garbled output.
 # Prints a summary table at the end.
 #
 # Expects setup.sh to have been run first (state in /tmp/pxe-install-test/state.env).
@@ -30,10 +31,6 @@ INSTALL_TIMEOUT=600   # 10 min
 SSH_TIMEOUT=300       # 5 min
 QEMU_RAM="1G"
 QEMU_DISK_SIZE="20G"
-
-# Results tracking
-declare -a CASE_NAMES=()
-declare -a CASE_RESULTS=()
 
 # ---------------------------------------------------------------------------
 # Locate OVMF firmware (once)
@@ -75,6 +72,11 @@ run_case() {
   local case_num="$2"
   local case_name
   case_name="$(basename "$case_dir")"
+
+  local tap_dev="tap-${case_num}"
+  local configmap_name="pxe-test-config-${case_num}"
+  local preseed_name="pxe-test-preseed-${case_num}"
+  local secret_base="pxe-test-secret-${case_num}"
 
   local case_work="${WORK_DIR}/${case_name}"
   local case_artifacts="${ARTIFACTS_DIR}/${case_name}"
@@ -126,7 +128,7 @@ run_case() {
   local secret_name=""
   if [ -f "${case_dir}/pre-secret.sh" ]; then
     echo "Running pre-secret hook..."
-    secret_name=$("${case_dir}/pre-secret.sh" "$case_work")
+    secret_name=$("${case_dir}/pre-secret.sh" "$case_work" "$secret_base")
   fi
 
   # --- Run pre-provision hook (optional) ---
@@ -139,8 +141,8 @@ run_case() {
   fi
 
   # --- Create ConfigMap ---
-  echo "Creating ConfigMap..."
-  kubectl create configmap "pxe-test-config" -n isoboot \
+  echo "Creating ConfigMap ${configmap_name}..."
+  kubectl create configmap "$configmap_name" -n isoboot \
     --from-literal=language=en \
     --from-literal=country=US \
     --from-literal=keyboard=us \
@@ -151,9 +153,12 @@ run_case() {
     --from-literal=timezone=UTC \
     "${extra_cm_args[@]+"${extra_cm_args[@]}"}"
 
-  # --- Apply fixtures (substitute MAC placeholder) ---
+  # --- Apply fixtures (substitute placeholders) ---
   echo "Applying fixtures..."
-  sed -e "s/\${MAC}/${vm_mac_dash}/g" -e "s/\${VM_NAME}/${vm_name}/g" "${case_dir}/fixtures.yaml" | kubectl apply -f -
+  sed -e "s/\${MAC}/${vm_mac_dash}/g" \
+      -e "s/\${VM_NAME}/${vm_name}/g" \
+      -e "s/\${CASE_NUM}/${case_num}/g" \
+      "${case_dir}/fixtures.yaml" | kubectl apply -f -
 
   # --- Create Provision ---
   echo "Creating Provision..."
@@ -166,9 +171,9 @@ metadata:
 spec:
   machineRef: ${vm_name}
   bootTargetRef: ${boot_target}
-  responseTemplateRef: pxe-test-preseed
+  responseTemplateRef: ${preseed_name}
   configMaps:
-    - pxe-test-config
+    - ${configmap_name}
 $([ -n "$secret_name" ] && echo "  secrets:
     - ${secret_name}")
 ${extra_provision_spec}
@@ -192,15 +197,20 @@ EOF
     head -5 "${case_work}/rendered-preseed.cfg" 2>/dev/null || true
   fi
 
-  # --- Create QEMU disk ---
-  local disk="${case_work}/disk.qcow2"
+  # --- Create QEMU disk (on ramdisk if available) ---
+  local disk_dir="${case_work}"
+  if [ -n "${RAMDISK_DIR:-}" ] && [ -d "$RAMDISK_DIR" ]; then
+    disk_dir="${RAMDISK_DIR}/${case_name}"
+    mkdir -p "$disk_dir"
+  fi
+  local disk="${disk_dir}/disk.qcow2"
   qemu-img create -f qcow2 "$disk" "$QEMU_DISK_SIZE"
 
   # --- Create tap device ---
-  ip link del tap-vm 2>/dev/null || true
-  ip tuntap add dev tap-vm mode tap
-  ip link set tap-vm master "$BRIDGE"
-  ip link set tap-vm up
+  ip link del "$tap_dev" 2>/dev/null || true
+  ip tuntap add dev "$tap_dev" mode tap
+  ip link set "$tap_dev" master "$BRIDGE"
+  ip link set "$tap_dev" up
 
   # --- Copy OVMF vars ---
   local pflash_args=( -drive "if=pflash,format=raw,readonly=on,file=${OVMF_CODE}" )
@@ -219,7 +229,7 @@ EOF
     -smp 2 \
     -drive "file=${disk},format=qcow2,if=virtio" \
     "${pflash_args[@]}" \
-    -netdev "tap,id=net0,ifname=tap-vm,script=no,downscript=no" \
+    -netdev "tap,id=net0,ifname=${tap_dev},script=no,downscript=no" \
     -device "virtio-net-pci,netdev=net0,mac=${vm_mac}" \
     -serial "file:${serial_log}" \
     -display none \
@@ -261,14 +271,14 @@ EOF
       cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
       kill "$qemu_pid" 2>/dev/null || true
       wait "$qemu_pid" 2>/dev/null || true
-      ip link del tap-vm 2>/dev/null || true
+      ip link del "$tap_dev" 2>/dev/null || true
       return 1
     fi
 
     if ! kill -0 "$qemu_pid" 2>/dev/null; then
       echo "ERROR: QEMU process exited unexpectedly"
       cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
-      ip link del tap-vm 2>/dev/null || true
+      ip link del "$tap_dev" 2>/dev/null || true
       return 1
     fi
 
@@ -281,7 +291,7 @@ EOF
     cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
-    ip link del tap-vm 2>/dev/null || true
+    ip link del "$tap_dev" 2>/dev/null || true
     return 1
   fi
 
@@ -339,7 +349,7 @@ EOF
     cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
-    ip link del tap-vm 2>/dev/null || true
+    ip link del "$tap_dev" 2>/dev/null || true
     return 1
   fi
 
@@ -350,7 +360,7 @@ EOF
     cp "$serial_log" "$case_artifacts/" 2>/dev/null || true
     kill "$qemu_pid" 2>/dev/null || true
     wait "$qemu_pid" 2>/dev/null || true
-    ip link del tap-vm 2>/dev/null || true
+    ip link del "$tap_dev" 2>/dev/null || true
     return 1
   fi
 
@@ -383,7 +393,7 @@ EOF
   fi
 
   # --- Cleanup per-case resources ---
-  ip link del tap-vm 2>/dev/null || true
+  ip link del "$tap_dev" 2>/dev/null || true
 
   return 0
 }
@@ -396,13 +406,14 @@ cleanup_case() {
   local case_num=$((10#${case_name%%-*}))
   local provision_name="pxe-test-${case_name}"
   local vm_name="pxe-test-vm-${case_num}.local"
+  local tap_dev="tap-${case_num}"
 
   echo "Cleaning up resources for ${case_name}..."
   kubectl delete provision/"${provision_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
-  kubectl delete responsetemplate/pxe-test-preseed -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete responsetemplate/"pxe-test-preseed-${case_num}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
   kubectl delete machine/"${vm_name}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
-  kubectl delete configmap/pxe-test-config -n isoboot --ignore-not-found --wait 2>/dev/null || true
-  kubectl delete secret/pxe-test-secret -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete configmap/"pxe-test-config-${case_num}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
+  kubectl delete secret/"pxe-test-secret-${case_num}" -n isoboot --ignore-not-found --wait 2>/dev/null || true
 
   # Kill any leftover QEMU
   local case_work="${WORK_DIR}/${case_name}"
@@ -415,11 +426,41 @@ cleanup_case() {
   fi
 
   # Remove tap device
-  ip link del tap-vm 2>/dev/null || true
+  ip link del "$tap_dev" 2>/dev/null || true
+
+  # Clean up ramdisk for this case
+  if [ -n "${RAMDISK_DIR:-}" ]; then
+    rm -rf "${RAMDISK_DIR:?}/${case_name}" 2>/dev/null || true
+  fi
 }
 
 # ---------------------------------------------------------------------------
-# Main — discover and run all cases
+# run_case_logged — runs a case with output captured to a log file,
+#                   writes PASS or FAIL to a result file.
+# ---------------------------------------------------------------------------
+run_case_logged() {
+  local case_dir="$1"
+  local case_num="$2"
+  local case_name
+  case_name="$(basename "$case_dir")"
+  local case_work="${WORK_DIR}/${case_name}"
+  mkdir -p "$case_work"
+
+  # Redirect ALL output for this subshell (called with &) to the log file.
+  # Using exec is more robust than command-level redirect — it captures output
+  # from child processes (ssh, sshpass, verify.sh) that may escape a simple
+  # `cmd > file 2>&1` redirect in background subshells.
+  exec > "${case_work}/output.log" 2>&1
+
+  if run_case "$case_dir" "$case_num"; then
+    echo "PASS" > "${case_work}/result"
+  else
+    echo "FAIL" > "${case_work}/result"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Main — discover and run all cases in parallel pairs
 # ---------------------------------------------------------------------------
 mkdir -p "$ARTIFACTS_DIR"
 
@@ -434,26 +475,108 @@ echo "Found ${#cases[@]} test case(s):"
 for c in "${cases[@]}"; do
   echo "  - $(basename "$c")"
 done
+echo ""
+echo "Running cases in parallel pairs (2 at a time)..."
 
 TOTAL=${#cases[@]}
 PASSED=0
 FAILED=0
 
-for case_dir in "${cases[@]}"; do
-  case_name="$(basename "$case_dir")"
-  # Extract case number from directory name prefix (e.g., 01 from 01-basic-debian-13)
-  case_num=$((10#${case_name%%-*}))
-  CASE_NAMES+=("$case_name")
+# Collect results for summary
+declare -a CASE_NAMES=()
+declare -a CASE_RESULTS=()
 
-  if run_case "$case_dir" "$case_num"; then
-    CASE_RESULTS+=("PASS")
-    PASSED=$((PASSED + 1))
+for ((i=0; i<${#cases[@]}; i+=2)); do
+  case_dir_a="${cases[$i]}"
+  case_name_a="$(basename "$case_dir_a")"
+  case_num_a=$((10#${case_name_a%%-*}))
+
+  if [ $((i+1)) -lt ${#cases[@]} ]; then
+    # --- Run a pair in parallel ---
+    case_dir_b="${cases[$((i+1))]}"
+    case_name_b="$(basename "$case_dir_b")"
+    case_num_b=$((10#${case_name_b%%-*}))
+
+    echo ""
+    echo "================================================================"
+    echo "  PARALLEL PAIR: ${case_name_a} + ${case_name_b}"
+    echo "================================================================"
+
+    run_case_logged "$case_dir_a" "$case_num_a" &
+    pid_a=$!
+    run_case_logged "$case_dir_b" "$case_num_b" &
+    pid_b=$!
+
+    # Wait for both
+    wait "$pid_a" 2>/dev/null || true
+    wait "$pid_b" 2>/dev/null || true
+
+    # Display output for case A
+    echo ""
+    echo "================================================================"
+    echo "  OUTPUT: ${case_name_a}"
+    echo "================================================================"
+    cat "${WORK_DIR}/${case_name_a}/output.log" 2>/dev/null || echo "(no output)"
+
+    # Record result for case A
+    CASE_NAMES+=("$case_name_a")
+    result_a=$(cat "${WORK_DIR}/${case_name_a}/result" 2>/dev/null || echo "FAIL")
+    CASE_RESULTS+=("$result_a")
+    if [ "$result_a" = "PASS" ]; then
+      PASSED=$((PASSED + 1))
+    else
+      FAILED=$((FAILED + 1))
+    fi
+
+    # Display output for case B
+    echo ""
+    echo "================================================================"
+    echo "  OUTPUT: ${case_name_b}"
+    echo "================================================================"
+    cat "${WORK_DIR}/${case_name_b}/output.log" 2>/dev/null || echo "(no output)"
+
+    # Record result for case B
+    CASE_NAMES+=("$case_name_b")
+    result_b=$(cat "${WORK_DIR}/${case_name_b}/result" 2>/dev/null || echo "FAIL")
+    CASE_RESULTS+=("$result_b")
+    if [ "$result_b" = "PASS" ]; then
+      PASSED=$((PASSED + 1))
+    else
+      FAILED=$((FAILED + 1))
+    fi
+
+    # Cleanup both
+    cleanup_case "$case_name_a"
+    cleanup_case "$case_name_b"
+
   else
-    CASE_RESULTS+=("FAIL")
-    FAILED=$((FAILED + 1))
-  fi
+    # --- Odd case out, run solo ---
+    echo ""
+    echo "================================================================"
+    echo "  SOLO: ${case_name_a}"
+    echo "================================================================"
 
-  cleanup_case "$case_name"
+    run_case_logged "$case_dir_a" "$case_num_a"
+
+    # Display output
+    echo ""
+    echo "================================================================"
+    echo "  OUTPUT: ${case_name_a}"
+    echo "================================================================"
+    cat "${WORK_DIR}/${case_name_a}/output.log" 2>/dev/null || echo "(no output)"
+
+    # Record result
+    CASE_NAMES+=("$case_name_a")
+    result_a=$(cat "${WORK_DIR}/${case_name_a}/result" 2>/dev/null || echo "FAIL")
+    CASE_RESULTS+=("$result_a")
+    if [ "$result_a" = "PASS" ]; then
+      PASSED=$((PASSED + 1))
+    else
+      FAILED=$((FAILED + 1))
+    fi
+
+    cleanup_case "$case_name_a"
+  fi
 done
 
 # ---------------------------------------------------------------------------
@@ -461,7 +584,7 @@ done
 # ---------------------------------------------------------------------------
 echo ""
 echo "================================================================"
-echo "  PXE Install Test Results"
+echo "  Debian 13 PXE Install Test Results"
 echo "================================================================"
 
 max_len=0
