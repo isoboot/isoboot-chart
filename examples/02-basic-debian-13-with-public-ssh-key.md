@@ -41,7 +41,7 @@ spec:
       d-i preseed/late_command string \
         in-target mkdir -p /home/{{ .username }}/.ssh && \
         in-target chmod 700 /home/{{ .username }}/.ssh && \
-        echo '{{ .sshPublicKey }}' > /target/home/{{ .username }}/.ssh/authorized_keys && \
+        echo '{{ .sshPublicKey | b64enc }}' | base64 -d > /target/home/{{ .username }}/.ssh/authorized_keys && \
         in-target chmod 600 /home/{{ .username }}/.ssh/authorized_keys && \
         in-target chown -R {{ .username }}:{{ .username }} /home/{{ .username }}/.ssh && \
         wget -qO- http://{{ .Host }}:{{ .Port }}/dynamic/boot/done?mac={{ .MAC }}
