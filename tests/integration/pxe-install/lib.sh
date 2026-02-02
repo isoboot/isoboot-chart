@@ -7,8 +7,8 @@ FAIL=0
 # --- Argument parsing ---
 
 parse_args() {
-  if [ "$#" -lt 5 ]; then
-    echo "Usage: $0 <ip> <username> <password> <expected_hostname> <expected_domain> [<case_work_dir>]" >&2
+  if [ "$#" -lt 6 ]; then
+    echo "Usage: $0 <ip> <username> <password> <expected_hostname> <expected_domain> <case_work_dir>" >&2
     exit 1
   fi
   IP="$1"
@@ -16,7 +16,7 @@ parse_args() {
   PASSWORD="$3"
   EXPECTED_HOSTNAME="$4"
   EXPECTED_DOMAIN="$5"
-  CASE_WORK="${6:-}"
+  CASE_WORK="$6"
 }
 
 # --- SSH command setup ---
